@@ -22,10 +22,14 @@
     "start": "node node_modules/next/dist/bin/next start",
     "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
     "test:builder": "node scripts/test-builder.mjs",
+    "test:import": "node scripts/test-import.mjs",
     "test:auth": "node scripts/test-auth.mjs",
     "test:writer": "node scripts/test-writer.mjs",
     "test:packs": "node scripts/test-packs.mjs",
-    "test:billing": "node scripts/test-billing.mjs"
+    "test:billing": "node scripts/test-billing.mjs",
+    "test:admin": "node scripts/test-admin.mjs",
+    "test:e2e": "node scripts/test-e2e-smoke.mjs",
+    "test:all": "node scripts/run-all-tests.mjs"
   },
   "version": "0.1.0"
 }
