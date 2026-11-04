@@ -1,11 +1,11 @@
-# Global Career Studio web app (builder, increment 5)
+# Global Career Studio web app (builder, auth, dashboard, increment 6)
 
-Status: Phase 2 increment 5 builder only. This is NOT a finished
-product. There are no accounts, payments, AI features, letters, ATS
-analysis, or country packs in this app, and no database is connected.
-Drafts are local browser drafts only, clearly labelled as a temporary
-stand in until Prisma validation passes and a real database is
-connected.
+Status: Phase 2 increment 6. This is NOT a finished product. There
+are no payments, AI features, letters, ATS analysis, or country
+packs in this app, and no database is connected. Accounts, profiles,
+and documents are local browser data only, clearly labelled as a
+temporary stand in until Prisma validation passes and a real database
+is connected.
 
 ## What is in this increment
 
@@ -44,6 +44,23 @@ connected.
   left unparsed for correction, not guessed. LinkedIn import is
   planned, not built, and guided paste is the working fallback, with
   an honest limitation note on the builder page.
+- Local auth, master profile, and working dashboard in increment 6:
+  account page at `app/auth/page.tsx` with signup, login, logout,
+  and password reset, using hashed passwords in `lib/auth-core.mjs`
+  (SHA-256 with a random salt, never plain text, localStorage only).
+  The auth API at `app/api/auth/route.ts` is structure only and
+  answers 501 for local only, because no database is connected, so
+  it never pretends to create a server account. Master profile page
+  at `app/profile/page.tsx` with one profile per account, reused
+  across documents, and save back from a builder draft only after a
+  confirmation prompt. Dashboard at `app/dashboard/page.tsx` now
+  lists local drafts and job versions, with open in builder,
+  duplicate, rename, and delete with confirmation, instead of the
+  increment 2 placeholders. AI credits, subscription, and human
+  review on the dashboard are still clearly labelled not yet
+  connected, and are not working features. The builder page can open
+  a dashboard document through `gcs-open-document`, and can save a
+  draft back to the master profile only after confirmation.
 - Job specific versions in increment 5, local browser drafts only:
   create a named job version from the master draft with a user typed
   job title and company, both required and never invented, edit a
@@ -116,15 +133,16 @@ Then open the local address shown by Next.js.
 npm run build
 npm run typecheck
 npm run test:builder
+npm run test:auth
 ```
 
-In increment 5, typecheck passed, the production build passed for both
-editions (routes `/`, `/builder` 8.97 kB, `/dashboard`, 87.4 kB first
-load JS on home and dashboard, plus `/api/export` and `/api/import`),
-the builder test passed 25 of 25, the import test passed 6 of 6, and
-the template engine test passed 64 of 64. A live import API test in
-increment 5 returned the engine PDF and DOCX with the correct name,
-headline, and contact fields, and a wrong extension returned 400.
+In increment 6, typecheck passed, the production build passed for both
+editions (routes `/`, `/builder` 6.71 kB, `/dashboard` 3.54 kB
+commercial and 2.73 kB nvconsult, `/auth` 4.97 kB commercial and
+4.16 kB nvconsult, `/profile` 1.88 kB, plus `/api/export`,
+`/api/import`, and `/api/auth`), the builder test passed 25 of 25,
+the import test passed 6 of 6, the auth test passed 12 of 12, and
+the template engine test passed 64 of 64.
 The dashboard layout is one column on phones, two columns on tablets,
 and three columns on desktops.
 
@@ -132,8 +150,16 @@ and three columns on desktops.
 
 - `app/layout.tsx`: shared layout with the edition aware header.
 - `app/page.tsx`: home page.
-- `app/dashboard/page.tsx`: dashboard shell, placeholders only, with a
-  link to the builder.
+- `app/dashboard/page.tsx`: working local dashboard, listing local
+  drafts and job versions, with open in builder, duplicate, rename,
+  and delete with confirmation. AI credits, subscription, and human
+  review are still not yet connected placeholders on this page.
+- `app/auth/page.tsx`: local account page, signup, login, logout,
+  and password reset, hashed passwords only.
+- `app/profile/page.tsx`: master profile editor, with load from
+  builder draft, save back with confirmation, and use in builder.
+- `app/api/auth/route.ts`: auth API structure only, local only, 501,
+  because no database is connected.
 - `app/builder/page.tsx`: working builder, local drafts only, with
   PDF/DOCX file import and job specific versions.
 - `app/api/export/route.ts`: PDF and DOCX export through the real
