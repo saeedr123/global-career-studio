@@ -44,6 +44,11 @@ import {
   languagePackById,
   sectionTitleForLanguage
 } from "../../lib/packs-core.mjs";
+import {
+  canExportDocument,
+  effectivePlan,
+  isTemplateAllowed
+} from "../../lib/billing-core.mjs";
 
 const DRAFT_KEY = "gcs-builder-draft";
 const VERSIONS_KEY = "gcs-builder-versions";
@@ -87,9 +92,22 @@ export default function BuilderPage() {
   const [countryPackId, setCountryPackId] = useState("global");
   const [languageId, setLanguageId] = useState("en");
   const [message, setMessage] = useState("");
+  const [subscriptionPlan, setSubscriptionPlan] = useState("free");
+  const [subscriptionTrialEnd, setSubscriptionTrialEnd] = useState("");
+  const [existingDocument, setExistingDocument] = useState(false);
   const timer = useRef<any>(null);
 
   useEffect(() => {
+    try {
+      const subscriptionRaw = window.localStorage.getItem("gcs-subscription");
+      if (subscriptionRaw) {
+        const subscription = JSON.parse(subscriptionRaw);
+        setSubscriptionPlan(effectivePlan(subscription));
+        setSubscriptionTrialEnd(subscription.trialEnd || "");
+      }
+    } catch {
+      // An unreadable subscription is ignored, the plan stays Free.
+    }
     try {
       const onboarding = window.localStorage.getItem("gcs-onboarding-choice");
       if (onboarding) {
@@ -112,6 +130,7 @@ export default function BuilderPage() {
         if (document && document.profile) {
           setProfile(document.profile);
           setSettings(document.settings || createDefaultSettings());
+          setExistingDocument(true);
           setSavedState(`Opened from dashboard: ${document.label || "document"}.`);
           if (document.kind === "job" && document.id) {
             setActiveJobVersionId(document.id);
@@ -211,12 +230,17 @@ export default function BuilderPage() {
   }
 
   async function exportFile(format: "pdf" | "docx") {
+    const entitlement = canExportDocument({ planId: subscriptionPlan, templateId: settings.templateId, format, existingDocument });
+    if (!entitlement.allowed) {
+      setMessage(entitlement.reason);
+      return;
+    }
     setMessage(`Exporting ${format.toUpperCase()}...`);
     try {
       const response = await fetch("/api/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, settings, format })
+        body: JSON.stringify({ profile, settings, format, subscriptionPlan, existingDocument })
       });
       if (!response.ok) {
         throw new Error("Export request failed.");
@@ -358,12 +382,17 @@ export default function BuilderPage() {
   }
 
   async function exportJobVersion(version: any, format: "pdf" | "docx") {
+    const entitlement = canExportDocument({ planId: subscriptionPlan, templateId: version.settings.templateId, format, existingDocument: true });
+    if (!entitlement.allowed) {
+      setMessage(entitlement.reason);
+      return;
+    }
     setMessage(`Exporting job version ${format.toUpperCase()}...`);
     try {
       const response = await fetch("/api/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile: version.profile, settings: version.settings, format })
+        body: JSON.stringify({ profile: version.profile, settings: version.settings, format, subscriptionPlan, existingDocument: true })
       });
       if (!response.ok) {
         throw new Error("Export request failed.");
@@ -404,6 +433,18 @@ export default function BuilderPage() {
         until a real database is connected. No price, payment, AI feature,
         or verified history is claimed here.
       </p>
+      <p className="mt-4 rounded border border-slate-300 bg-white p-4">
+        Current local plan: {subscriptionPlan === "trial" ? `Trial, ends ${subscriptionTrialEnd || "date not set"}` : subscriptionPlan === "premium" ? "Premium, local only" : "Free, local only"}. Entitlements are local browser state only, until a real database and Stripe are connected. No checkout or payment is shown here.
+        {!isTemplateAllowed(subscriptionPlan, settings.templateId) && !existingDocument && (
+          <span className="mt-2 block"> This template is locked on the Free plan. It is a premium template. Choose a free template for a new document, or open the subscription page to check your local plan. A document you already created stays viewable here.</span>
+        )}
+        {existingDocument && (
+          <span className="mt-2 block"> This document was opened from the dashboard, so it stays viewable and downloadable here, even if its template is locked for a new document.</span>
+        )}
+        {subscriptionPlan === "free" && (
+          <span className="mt-2 block"> DOCX export is a premium export on Free. Standard PDF export is included on Free. <a className="text-blue-700 underline" href="/subscription">Open the subscription page</a></span>
+        )}
+      </p>
       {missing.length > 0 && (
         <p className="mt-4 rounded border border-amber-300 bg-amber-50 p-4">
           Missing for a complete draft: {missing.join(", ")}. You can still
@@ -423,7 +464,7 @@ export default function BuilderPage() {
             onChange={(event) => setSettings({ ...settings, templateId: event.target.value })}
           >
             {TEMPLATES.map((template: any) => (
-              <option key={template.id} value={template.id}>{template.name}</option>
+              <option key={template.id} value={template.id}>{template.name}{isTemplateAllowed(subscriptionPlan, template.id) ? "" : " (Premium, locked on Free)"}</option>
             ))}
           </select>
           <span className="mt-1 block text-sm text-slate-500">{selectedTemplate.description}</span>
