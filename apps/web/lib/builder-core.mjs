@@ -23,8 +23,16 @@ export const SECTION_TITLES = {
 };
 
 export const TEMPLATES = [
-  { id: "ats-minimal", name: "ATS Minimal", photoAllowed: false },
-  { id: "modern-professional", name: "Modern Professional", photoAllowed: true }
+  { id: "ats-minimal", name: "ATS Minimal", photoAllowed: false, description: "Single column, plain, no photo. Best for portal uploads and parsing.", atsNote: "Parse friendly single column. Recommended for portal uploads." },
+  { id: "modern-professional", name: "Modern Professional", photoAllowed: true, description: "Single column with a navy header block and accent lines. Clean and professional.", atsNote: "Single column, parse friendly text order." },
+  { id: "executive", name: "Executive", photoAllowed: true, description: "Centered header, large name, skills before education. For senior roles.", atsNote: "Single column, parse friendly text order." },
+  { id: "corporate", name: "Corporate", photoAllowed: true, description: "Formal band header, experience first, compact spacing. For corporate roles.", atsNote: "Single column, parse friendly text order." },
+  { id: "elegant", name: "Elegant", photoAllowed: true, description: "Serif type, centered header, education before experience. For a refined look.", atsNote: "Single column, parse friendly text order." },
+  { id: "european", name: "European", photoAllowed: true, description: "Europass style structure: personal information, work, education, language skills. Not a copy of the official Europass design.", atsNote: "Single column, parse friendly text order. Europass style structure only." },
+  { id: "us-resume", name: "US Resume", photoAllowed: false, description: "US style: professional summary, experience, skills, then education. No photo by US convention.", atsNote: "Single column, parse friendly text order. No photo, by US convention." },
+  { id: "uk-cv", name: "UK CV", photoAllowed: false, description: "UK style: personal profile, experience, education, skills. No photo by UK convention.", atsNote: "Single column, parse friendly text order. No photo, by UK convention." },
+  { id: "sidebar", name: "Sidebar", photoAllowed: true, description: "Design first: narrow left sidebar for skills and languages, wide main column for the rest.", atsNote: "Design first, not ATS friendly. For portal uploads, use ATS Minimal instead." },
+  { id: "two-column", name: "Two-column", photoAllowed: true, description: "Design first: wide main column on the left, narrow right column for skills and languages.", atsNote: "Design first, not ATS friendly. For portal uploads, use ATS Minimal instead." }
 ];
 
 export function templateById(id) {
