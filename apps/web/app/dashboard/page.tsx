@@ -122,6 +122,9 @@ export default function Dashboard() {
         <a className="rounded bg-navy px-4 py-2 text-white" href="/builder">Open the CV builder</a>
         <a className="rounded border border-slate-300 px-4 py-2" href="/auth">Account, local only</a>
         <a className="rounded border border-slate-300 px-4 py-2" href="/profile">Edit master profile</a>
+        <a className="rounded border border-slate-300 px-4 py-2" href="/writer">Local writer</a>
+        <a className="rounded border border-slate-300 px-4 py-2" href="/letters">Letter studio</a>
+        <a className="rounded border border-slate-300 px-4 py-2" href="/ats">ATS check, heuristic only</a>
       </p>
 
       <h2 className="mt-8 text-2xl font-semibold">Your documents, local only</h2>
@@ -161,8 +164,13 @@ export default function Dashboard() {
           <p className="mt-2"><a className="text-blue-700 underline" href="/builder">Open the builder</a></p>
         </div>
         <div className="rounded border border-slate-200 bg-white p-4">
+          <h3 className="font-semibold">Local writer, letters, and ATS check</h3>
+          <p className="mt-2 text-slate-700">Local drafting assistance, letter studio, and a heuristic ATS check are now working, in this browser only. No AI provider is connected, so no AI credits are shown.</p>
+          <p className="mt-2"><a className="text-blue-700 underline" href="/writer">Open the local writer</a></p>
+        </div>
+        <div className="rounded border border-slate-200 bg-white p-4">
           <h3 className="font-semibold">AI credits</h3>
-          <p className="mt-2 text-slate-700">Not yet connected. No AI generation and no credit balance is shown here, because no AI provider is connected.</p>
+          <p className="mt-2 text-slate-700">Not yet connected. No connected AI generation and no credit balance is shown here, because no AI provider is connected.</p>
         </div>
         <div className="rounded border border-slate-200 bg-white p-4">
           <h3 className="font-semibold">Subscription</h3>
