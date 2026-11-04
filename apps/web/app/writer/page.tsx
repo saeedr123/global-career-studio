@@ -11,10 +11,13 @@ import {
 } from "../../lib/writer-core.mjs";
 import { effectivePlan, isAdvancedAiAllowed } from "../../lib/billing-core.mjs";
 
-// Local drafting assistance, Phase 2 increment 7, local only.
-// This page rewrites only text the user already supplied, using local
-// rules. No connected AI model is used, no text is sent anywhere, and
-// no qualification, employer, date, or achievement is invented. A
+// Local drafting assistance, Phase 2 increment 7, local only, with the
+// Phase 2 increment 11 provider status. Selected provider: Muse AI.
+// Connected Muse AI is ready for a key and is NOT live until the owner
+// adds a key and sets a budget cap, so this page falls back to the
+// local writer and no text is sent anywhere until then. This page
+// rewrites only text the user already supplied, using local rules.
+// No qualification, employer, date, or achievement is invented. A
 // suggestion is shown beside the original and is applied only after
 // the user clicks Apply. Missing fields are prompts, never filled in.
 
@@ -29,8 +32,13 @@ export default function WriterPage() {
   const [message, setMessage] = useState("");
   const [subscriptionPlan, setSubscriptionPlan] = useState("free");
   const [subscriptionTrialEnd, setSubscriptionTrialEnd] = useState("");
+  const [aiStatus, setAiStatus] = useState<any>(null);
 
   useEffect(() => {
+    fetch("/api/ai-status")
+      .then((response) => response.json())
+      .then((data) => setAiStatus(data))
+      .catch(() => setAiStatus(null));
     try {
       const subscriptionRaw = window.localStorage.getItem("gcs-subscription");
       if (subscriptionRaw) {
@@ -90,12 +98,25 @@ export default function WriterPage() {
       <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Local drafting assistance, not a connected AI model</p>
       <h1 className="mt-2 text-3xl font-bold text-navy">Local writer</h1>
       <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-4 text-slate-800">
-        This writer runs in your browser only. No text is sent anywhere, no AI provider is connected, and a connected AI provider will replace this local module later, once a provider is chosen. It only rephrases words you already supplied. It never adds an employer, a job title, a date, a certification, or an achievement.
+        Selected provider: Muse AI. Connected Muse AI is ready for a key and is NOT live until the owner adds a key and sets a budget cap, so this writer runs in your browser only for now. No text is sent anywhere, and it only rephrases words you already supplied. It never adds an employer, a job title, a date, a certification, or an achievement.
       </p>
+      <section className="mt-6 rounded border border-slate-200 bg-white p-4">
+        <h2 className="font-semibold">AI provider status</h2>
+        {aiStatus ? (
+          <div className="mt-2 text-slate-700">
+            <p>Provider selected: {aiStatus.providerSelected || "Muse AI"}</p>
+            <p>Mode: {aiStatus.mode === "connected" ? "Connected" : "Local fallback"}</p>
+            <p>{aiStatus.statusText}</p>
+            <p className="mt-2 text-sm">No budget cap has been set yet, so the owner must set one before enabling live calls. No key is shown on this page.</p>
+          </div>
+        ) : (
+          <p className="mt-2 text-slate-700">Provider selected: Muse AI. Connected Muse AI is NOT live yet. Local writer is used, and no text is sent anywhere.</p>
+        )}
+      </section>
       <section className="mt-6 rounded border border-slate-200 bg-white p-4">
         <h2 className="font-semibold">AI access, local plan: {subscriptionPlan === "trial" ? `Trial, ends ${subscriptionTrialEnd || "date not set"}` : subscriptionPlan}</h2>
         {isAdvancedAiAllowed(subscriptionPlan) ? (
-          <p className="mt-2 text-slate-700">Advanced AI is included in your local plan in config, but no connected AI provider is built yet, so only the local rewriting below runs here. Nothing here is presented as connected AI.</p>
+          <p className="mt-2 text-slate-700">Advanced AI is included in your local plan in config, but connected Muse AI is NOT live yet, so only the local rewriting below runs here. Nothing here is presented as a live connected AI call.</p>
         ) : (
           <p className="mt-2 text-slate-700">Advanced AI features, including job specific tailoring, are locked on the Free plan. Basic local rewriting below is still available on Free. No checkout or payment is shown here.</p>
         )}
