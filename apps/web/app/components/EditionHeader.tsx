@@ -29,6 +29,15 @@ export default function EditionHeader() {
           <a className="text-slate-700 underline" href="/profile">
             Profile
           </a>
+          <a className="text-slate-700 underline" href="/writer">
+            Writer
+          </a>
+          <a className="text-slate-700 underline" href="/letters">
+            Letters
+          </a>
+          <a className="text-slate-700 underline" href="/ats">
+            ATS check
+          </a>
           <a className="text-blue-700 underline" href={editionConfig.headerHelpHref}>
             {editionConfig.headerHelpLabel}
           </a>
