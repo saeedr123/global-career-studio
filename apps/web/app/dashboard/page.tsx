@@ -20,6 +20,11 @@ export default function Dashboard() {
         generation, and no document editing yet. No price, trial offer, or
         limit is stated here, because none has been decided for launch.
       </p>
+      <p className="mt-4">
+        <a className="rounded bg-navy px-4 py-2 text-white" href="/builder">
+          Open the CV builder (local draft only)
+        </a>
+      </p>
 
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <PlaceholderCard title="Profile">
