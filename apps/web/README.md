@@ -1,12 +1,13 @@
-# Global Career Studio web app (builder, auth, dashboard, writer, letters, ATS, increment 7)
+# Global Career Studio web app (builder, auth, dashboard, writer, letters, ATS, packs, increment 8)
 
-Status: Phase 2 increment 7. This is NOT a finished product. There
-are no payments, no connected AI generation, and no country
-packs in this app, and no database is connected. Accounts, profiles,
-and documents are local browser data only, clearly labelled as a
-temporary stand in until Prisma validation passes and a real database
-is connected. The writer, letters, and ATS check in this increment
-are local features, not connected services.
+Status: Phase 2 increment 8. This is NOT a finished product. There
+are no payments, no connected AI generation, and no database is
+connected. Accounts, profiles, and documents are local browser data
+only, clearly labelled as a temporary stand in until Prisma validation
+passes and a real database is connected. The writer, letters, ATS
+check, country packs, language packs, and onboarding wizard in this
+app are local features, not connected services. Country packs are
+guidance only, not legal advice.
 
 ## What is in this increment
 
@@ -81,6 +82,23 @@ are local features, not connected services.
   not a real ATS, with no pass or fail result and no guaranteed
   outcome. The pasted job description is page state only, never
   saved and never sent.
+- Country packs, language packs, and onboarding wizard in increment 8:
+  country packs at `lib/packs-core.mjs` for US, Canada, UK, Germany,
+  Europe, Australia, New Zealand, and Global/Universal, each with
+  recommended templates, photo guidance, section order, paper size,
+  source notes, and a project review date of 2026-11-04, stated as
+  guidance only, not legal advice, with no fee, deadline, visa rule,
+  or legal requirement claimed. A country pack selector on the builder
+  page applies the pack, and every applied setting can be changed
+  afterwards. Language packs for English, German, French, and Spanish
+  translate interface labels and preview section headings only, are
+  labelled not professionally verified, and never auto translate user
+  CV content. Chinese (Simplified) is not in this version and stays
+  behind its demand gate. The onboarding wizard at
+  `app/onboarding/page.tsx` asks country, occupation, and document
+  goal, then shows a template and pack suggestion that the user can
+  change in the builder, with Back and Skip controls on every step
+  and a single column layout on phones.
 - Job specific versions in increment 5, local browser drafts only:
   create a named job version from the master draft with a user typed
   job title and company, both required and never invented, edit a
@@ -155,20 +173,25 @@ npm run typecheck
 npm run test:builder
 npm run test:auth
 npm run test:writer
+npm run test:packs
 ```
 
-In increment 7, typecheck passed, the production build passed for both
-editions (routes `/`, `/builder` 8.36 kB, `/dashboard` 5.31 kB
-commercial and 4.52 kB nvconsult, `/auth` 4.97 kB commercial and
-4.16 kB nvconsult, `/profile` 3.54 kB, `/writer` 5.21 kB,
-`/letters` 5.38 kB, `/ats` 4.91 kB, plus `/api/export`,
+In increment 8, typecheck passed after one real failure was fixed, not
+hidden: the new builder code indexed a language pack section title map
+with a plain string, which TypeScript rejected, so the pack values are
+now typed as any in the builder page, and the country pack value is
+typed the same way. The production build passed for both editions
+(routes `/`, `/builder` 10.8 kB, `/dashboard` 5.31 kB commercial and
+4.52 kB nvconsult, `/auth` 4.97 kB commercial and 4.16 kB nvconsult,
+`/profile` 3.54 kB, `/writer` 5.21 kB, `/letters` 5.38 kB,
+`/ats` 4.91 kB, `/onboarding` 3.56 kB, plus `/api/export`,
 `/api/import`, `/api/letter-export`, and `/api/auth`), the builder
 test passed 25 of 25, the import test passed 6 of 6, the auth test
-passed 12 of 12, the writer test passed 15 of 15, and
-the template engine test passed 64 of 64. A live letter export test
-returned PDF 200 at 1,553 bytes and DOCX 200 at 7,503 bytes, an empty
-letter returned 400, and the writer, letters, and ATS pages each
-returned 200. The test server was stopped after the test.
+passed 12 of 12, the writer test passed 15 of 15, the packs test
+passed 20 of 20, and the template engine test passed 64 of 64. A live
+server test returned 200 for the onboarding page and 200 for the
+builder page, and the onboarding page contained its heading. The test
+server was stopped after the test.
 The dashboard layout is one column on phones, two columns on tablets,
 and three columns on desktops.
 
@@ -200,8 +223,16 @@ and three columns on desktops.
   builder draft, save back with confirmation, and use in builder.
 - `app/api/auth/route.ts`: auth API structure only, local only, 501,
   because no database is connected.
+- `app/onboarding/page.tsx`: onboarding wizard, country, occupation,
+  and goal, with a suggestion that the user can change in the builder.
+- `lib/packs-core.mjs`: country packs for 8 version 1 markets and
+  language packs for 4 version 1 languages, plus pack application and
+  onboarding recommendation logic, tested with plain Node.
+- `scripts/test-packs.mjs`: country pack, language pack, pack
+  application and override, and onboarding recommendation tests.
 - `app/builder/page.tsx`: working builder, local drafts only, with
-  PDF/DOCX file import and job specific versions.
+  PDF/DOCX file import, job specific versions, a country pack and
+  language selector, and onboarding suggestion application.
 - `app/api/export/route.ts`: PDF and DOCX export through the real
   template engine.
 - `app/api/import/route.ts`: PDF and DOCX file import, text
