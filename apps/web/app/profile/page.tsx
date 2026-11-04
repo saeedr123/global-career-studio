@@ -1,0 +1,138 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  createEmptyProfile,
+  draftFromProfile,
+  loadProfileIntoDraft,
+  profileFromDraft,
+  saveDraftToProfile
+} from "../../lib/auth-core.mjs";
+import { createDefaultSettings, parseDraft, validateProfile } from "../../lib/builder-core.mjs";
+
+// Master profile editor, Phase 2 increment 6.
+// One profile per local account, stored in this browser only, until a
+// real database is connected. The profile uses the same fields as a
+// builder draft, so it can be reused across documents. Editing a
+// document in the builder does not change this master profile, unless
+// the user confirms a save back here or in the builder. Starting
+// data is empty, not sample data, because a real profile must not be
+// presented as sample history.
+
+const PROFILE_KEY = "gcs-profile";
+const DRAFT_KEY = "gcs-builder-draft";
+const OPEN_KEY = "gcs-open-document";
+
+export default function ProfilePage() {
+  const [profile, setProfile] = useState<any>(() => createEmptyProfile());
+  const [message, setMessage] = useState("");
+  const [missing, setMissing] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(PROFILE_KEY);
+      if (saved) {
+        setProfile(JSON.parse(saved));
+      }
+    } catch {
+      setMessage("Local profile could not be restored, starting from an empty profile.");
+    }
+  }, []);
+
+  function saveProfile(next: any) {
+    setProfile(next);
+    window.localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
+    setMissing(validateProfile(next));
+    setMessage("Master profile saved locally, in this browser only.");
+  }
+
+  function handleSave(event: any) {
+    event.preventDefault();
+    saveProfile(profile);
+  }
+
+  function loadFromBuilderDraft() {
+    try {
+      const saved = window.localStorage.getItem(DRAFT_KEY);
+      if (!saved) {
+        setMessage("No builder draft was found in this browser to load into the profile.");
+        return;
+      }
+      const draft = parseDraft(saved);
+      const next = profileFromDraft(draft);
+      saveProfile(next);
+      setMessage("Builder draft loaded into the master profile. Check it before you use it as real history.");
+    } catch {
+      setMessage("Builder draft could not be loaded into the profile.");
+    }
+  }
+
+  function saveDraftBackToProfile() {
+    try {
+      const saved = window.localStorage.getItem(DRAFT_KEY);
+      if (!saved) {
+        setMessage("No builder draft was found to save back to the profile.");
+        return;
+      }
+      const draft = parseDraft(saved);
+      if (!window.confirm("Save the current builder draft over the master profile? This replaces the profile fields with the draft fields.")) {
+        setMessage("Save back cancelled. The master profile was not changed.");
+        return;
+      }
+      const next = saveDraftToProfile(profile, draft.profile, true);
+      saveProfile(next);
+      setMessage("Builder draft saved back to the master profile, after your confirmation.");
+    } catch {
+      setMessage("Save back failed. The master profile was not changed.");
+    }
+  }
+
+  function useProfileInBuilder() {
+    try {
+      const document = draftFromProfile(profile, createDefaultSettings());
+      window.localStorage.setItem(OPEN_KEY, JSON.stringify({ ...document, id: "master", kind: "master", label: "Draft from profile" }));
+      setMessage("Profile sent to the builder. Open the builder to edit it as a draft. The master profile is unchanged until you save back with confirmation.");
+      window.location.href = "/builder";
+    } catch {
+      setMessage("Profile could not be sent to the builder.");
+    }
+  }
+
+  function updateField(field: string, value: string) {
+    setProfile((current: any) => ({ ...current, [field]: value }));
+  }
+
+  function updateList(field: string, value: string) {
+    setProfile((current: any) => ({ ...current, [field]: value.split(",").map((item: string) => item.trim()).filter(Boolean) }));
+  }
+
+  return (
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Master profile, local only</p>
+      <h1 className="mt-2 text-3xl font-bold text-navy">Profile</h1>
+      <p className="mt-3 text-slate-700">
+        One profile per account, reused across documents. This profile is stored in this browser only, until a real database is connected. It is empty by default, so nothing here is sample history. Editing a builder document does not change this profile, unless you confirm a save back.
+      </p>
+      <form className="mt-6 space-y-3" onSubmit={handleSave}>
+        <label className="block">Full name<input className="mt-1 block w-full rounded border p-2" value={profile.fullName || ""} onChange={(event) => updateField("fullName", event.target.value)} /></label>
+        <label className="block">Headline<input className="mt-1 block w-full rounded border p-2" value={profile.headline || ""} onChange={(event) => updateField("headline", event.target.value)} /></label>
+        <label className="block">Email<input className="mt-1 block w-full rounded border p-2" value={profile.email || ""} onChange={(event) => updateField("email", event.target.value)} /></label>
+        <label className="block">Phone<input className="mt-1 block w-full rounded border p-2" value={profile.phone || ""} onChange={(event) => setProfile((current: any) => ({ ...current, phone: event.target.value }))} /></label>
+        <label className="block">City<input className="mt-1 block w-full rounded border p-2" value={profile.city || ""} onChange={(event) => updateField("city", event.target.value)} /></label>
+        <label className="block">Summary<textarea className="mt-1 block w-full rounded border p-2" rows={4} value={profile.summary || ""} onChange={(event) => updateField("summary", event.target.value)} /></label>
+        <label className="block">Skills, comma separated<input className="mt-1 block w-full rounded border p-2" value={(profile.skills || []).join(", ")} onChange={(event) => updateList("skills", event.target.value)} /></label>
+        <label className="block">Languages, comma separated<input className="mt-1 block w-full rounded border p-2" value={(profile.languages || []).join(", ")} onChange={(event) => updateList("languages", event.target.value)} /></label>
+        <button type="submit" className="rounded bg-navy px-4 py-2 text-white">Save master profile locally</button>
+      </form>
+      {missing.length > 0 && <p className="mt-3 text-slate-700">Missing for a complete profile: {missing.join(", ")}.</p>}
+      <div className="mt-6 flex flex-wrap gap-2">
+        <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={loadFromBuilderDraft}>Load builder draft into profile</button>
+        <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={saveDraftBackToProfile}>Save builder draft back to profile, with confirmation</button>
+        <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={useProfileInBuilder}>Use this profile in the builder</button>
+      </div>
+      <p className="mt-4 text-sm text-slate-500">Experience, education, and custom sections are edited in the builder for now. The profile fields above are the reusable core, and the full profile copy is preserved when a draft is loaded.</p>
+      {message && <p className="mt-4 text-slate-800">{message}</p>}
+      <p className="mt-4"><a className="text-blue-700 underline" href="/dashboard">Back to the dashboard</a></p>
+    </main>
+  );
+}
