@@ -1,0 +1,527 @@
+// Prisma schema for Global Career Studio, Phase 2 increment 1.
+// Source: docs/database-design.md (Phase 1 design, now implemented as schema only).
+// No migrations are claimed as run here. Run migrations against a test
+// database, not production, and only after a hosted Postgres URL is set.
+// All ids are UUIDs. All timestamps are UTC (Prisma stores DateTime in UTC).
+// No prices, trial values, or limits are hard coded in this schema beyond
+// nullable configuration fields. Those values live in Plan and Trial rows
+// and are managed in admin in later phases.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum DocumentType {
+  cv
+  coverLetter
+  motivationLetter
+  otherLetter
+  linkedinAbout
+  bio
+  personalStatement
+}
+
+enum PaperSize {
+  A4
+  US_LETTER
+}
+
+enum DocumentStatus {
+  draft
+  ready
+  archived
+}
+
+enum ExportFormat {
+  pdf
+  docx
+  png
+  jpeg
+}
+
+enum ExportStatus {
+  queued
+  processing
+  ready
+  failed
+}
+
+enum TemplateVersionStatus {
+  draft
+  published
+  retired
+}
+
+enum CountryPackVersionStatus {
+  draft
+  published
+  retired
+}
+
+enum ServiceType {
+  freeReview
+  paidCreation
+}
+
+enum HumanReviewStatus {
+  requested
+  inProgress
+  delivered
+  cancelled
+}
+
+enum TrialStatus {
+  active
+  converted
+  expired
+  cancelled
+}
+
+enum ATSResult {
+  pass
+  warning
+  fail
+}
+
+enum PlanScope {
+  all
+  free
+  premium
+}
+
+enum ATSLevel {
+  basic
+  advanced
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  name         String?
+  passwordHash String
+  role         Role      @default(user)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  profile            Profile?
+  documents          Document[]
+  subscriptions      Subscription[]
+  trials             Trial[]
+  creditLedgers      AICreditLedger[]
+  aiUsageLogs        AIUsageLog[]
+  humanReviewRequests HumanReviewRequest[]
+  adminAuditLogs     AdminAuditLog[]
+
+  @@index([email])
+}
+
+model Profile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline        String?
+  summary         String?
+  phone           String?
+  city            String?
+  country         String?
+  website         String?
+  linkedinUrl     String?
+  photoStorageKey String?
+  photoCrop       Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  education      ProfileEducation[]
+  experience     ProfileExperience[]
+  skills         ProfileSkill[]
+  projects       ProfileProject[]
+  certifications ProfileCertification[]
+  languages      ProfileLanguage[]
+  documents      Document[]
+}
+
+model ProfileEducation {
+  id          String   @id @default(uuid())
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  institution String?
+  qualification String?
+  field       String?
+  startDate   DateTime?
+  endDate     DateTime?
+  isCurrent   Boolean  @default(false)
+  grade       String?
+  description String?
+  sortOrder   Int      @default(0)
+}
+
+model ProfileExperience {
+  id                String   @id @default(uuid())
+  profileId         String
+  profile           Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  employer          String?
+  jobTitle          String?
+  location          String?
+  startDate         DateTime?
+  endDate           DateTime?
+  isCurrent         Boolean  @default(false)
+  descriptionBullets Json?
+  sortOrder         Int      @default(0)
+}
+
+model ProfileSkill {
+  id        String  @id @default(uuid())
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name      String?
+  level     String?
+  sortOrder Int     @default(0)
+}
+
+model ProfileProject {
+  id          String  @id @default(uuid())
+  profileId   String
+  profile     Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  title       String?
+  description String?
+  link        String?
+  sortOrder   Int     @default(0)
+}
+
+model ProfileCertification {
+  id        String    @id @default(uuid())
+  profileId String
+  profile   Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name      String?
+  issuer    String?
+  date      DateTime?
+  sortOrder Int       @default(0)
+}
+
+model ProfileLanguage {
+  id          String  @id @default(uuid())
+  profileId   String
+  profile     Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  language    String?
+  proficiency String?
+  sortOrder   Int     @default(0)
+}
+
+model Document {
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId       String?
+  profile         Profile?       @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  title           String?
+  documentType    DocumentType   @default(cv)
+  templateId      String?
+  template        Template?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  countryPackId   String?
+  countryPack     CountryPack?   @relation(fields: [countryPackId], references: [id], onDelete: SetNull)
+  language        String         @default("en")
+  paperSize       PaperSize      @default(A4)
+  pageCountTarget Int            @default(1)
+  status          DocumentStatus @default(draft)
+  deletedAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  sections     DocumentSection[]
+  versions     DocumentVersion[]
+  exports      DocumentExport[]
+  shareLinks   ShareLink[]
+  atsAnalyses  ATSAnalysis[]
+  humanReviews HumanReviewRequest[]
+  aiUsageLogs  AIUsageLog[]
+}
+
+model DocumentSection {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  sectionKey String
+  title      String?
+  contentJson Json?
+  sortOrder  Int      @default(0)
+  isVisible  Boolean  @default(true)
+}
+
+model DocumentVersion {
+  id          String   @id @default(uuid())
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  label       String?
+  snapshotJson Json?
+  createdAt   DateTime @default(now())
+  createdBy   String?
+}
+
+model DocumentExport {
+  id           String       @id @default(uuid())
+  documentId   String
+  document     Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  format       ExportFormat
+  storageKey   String?
+  status       ExportStatus @default(queued)
+  errorMessage String?
+  createdAt    DateTime     @default(now())
+
+  exportLogs ExportLog[]
+}
+
+model ShareLink {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  isActive   Boolean  @default(true)
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
+}
+
+model HumanReviewRequest {
+  id            String            @id @default(uuid())
+  userId        String
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId    String?
+  document      Document?         @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  serviceType   ServiceType
+  status        HumanReviewStatus @default(requested)
+  notes         String?
+  turnaroundNote String?
+  createdAt     DateTime          @default(now())
+}
+
+model Template {
+  id                String   @id @default(uuid())
+  slug              String   @unique
+  name              String
+  layoutStructure   String?
+  typography        String?
+  colourPaletteJson Json?
+  defaultPaperSize  PaperSize @default(A4)
+  photoAllowed      Boolean  @default(true)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  versions  TemplateVersion[]
+  documents Document[]
+  exportLogs ExportLog[]
+}
+
+model TemplateVersion {
+  id            String                @id @default(uuid())
+  templateId    String
+  template      Template              @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  definitionJson Json?
+  status        TemplateVersionStatus @default(draft)
+  publishedAt   DateTime?
+  createdBy     String?
+}
+
+model CountryPack {
+  id               String   @id @default(uuid())
+  slug             String   @unique
+  name             String
+  region           String?
+  terminologyJson  Json?
+  spelling         String?
+  paperSizeDefault PaperSize @default(A4)
+  photoGuidance    String?
+  lengthGuidance   String?
+  sectionOrderJson Json?
+  sourceNotes      String?
+  lastVerifiedAt   DateTime
+  isActive         Boolean  @default(true)
+
+  versions  CountryPackVersion[]
+  documents Document[]
+}
+
+model CountryPackVersion {
+  id            String                    @id @default(uuid())
+  countryPackId String
+  countryPack   CountryPack               @relation(fields: [countryPackId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  definitionJson Json?
+  status        CountryPackVersionStatus  @default(draft)
+  publishedAt   DateTime?
+}
+
+model LanguagePack {
+  id                 String  @id @default(uuid())
+  code               String  @unique
+  name               String
+  interfaceStringsJson Json?
+  documentStringsJson  Json?
+  fontFamily         String?
+  isRTL              Boolean @default(false)
+  isActive           Boolean @default(true)
+}
+
+model Occupation {
+  id                String  @id @default(uuid())
+  slug              String  @unique
+  name              String
+  starterSummary    String?
+  starterSkillsJson Json?
+  starterBulletsJson Json?
+  isActive          Boolean @default(true)
+}
+
+model LetterTemplate {
+  id                String  @id @default(uuid())
+  slug              String  @unique
+  letterType        String
+  structureJson     Json?
+  toneGuidance      String?
+  requiredFieldsJson Json?
+  isActive          Boolean @default(true)
+}
+
+model ATSAnalysis {
+  id                 String   @id @default(uuid())
+  documentId         String
+  document           Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  jobDescriptionHash String?
+  scoreHeuristic     Int?
+  createdAt          DateTime @default(now())
+
+  results ATSAnalysisResult[]
+}
+
+model ATSAnalysisResult {
+  id             String    @id @default(uuid())
+  analysisId     String
+  analysis       ATSAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  checkKey       String
+  result         ATSResult
+  detail         String?
+  recommendation String?
+}
+
+model Plan {
+  id                String   @id @default(uuid())
+  slug              String   @unique
+  name              String
+  priceMonthlyCents Int?
+  priceAnnualCents  Int?
+  currency          String?
+  entitlementsJson  Json?
+  isActive          Boolean  @default(true)
+
+  subscriptions Subscription[]
+  trials        Trial[]
+}
+
+model Subscription {
+  id                   String   @id @default(uuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId               String
+  plan                 Plan     @relation(fields: [planId], references: [id])
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  status               String?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Trial {
+  id                String      @id @default(uuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId            String
+  plan              Plan        @relation(fields: [planId], references: [id])
+  startsAt          DateTime?
+  endsAt            DateTime?
+  status            TrialStatus @default(active)
+  aiCreditAllowance Int?
+  exportAllowance   Int?
+  createdAt         DateTime    @default(now())
+}
+
+model AICreditLedger {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodStart    DateTime
+  periodEnd      DateTime
+  creditsGranted Int      @default(0)
+  creditsUsed    Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, periodStart])
+}
+
+model AIUsageLog {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId      String?
+  document        Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  operation       String
+  creditsConsumed Int      @default(0)
+  provider        String?
+  model           String?
+  status          String?
+  createdAt       DateTime @default(now())
+}
+
+model AdminAuditLog {
+  id          String   @id @default(uuid())
+  adminUserId String
+  adminUser   User     @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  action      String
+  targetType  String?
+  targetId    String?
+  reason      String?
+  createdAt   DateTime @default(now())
+}
+
+model ExportLog {
+  id                String         @id @default(uuid())
+  documentExportId  String
+  documentExport    DocumentExport @relation(fields: [documentExportId], references: [id], onDelete: Cascade)
+  templateId        String?
+  template          Template?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  format            ExportFormat
+  status            ExportStatus
+  durationMs        Int?
+  createdAt         DateTime       @default(now())
+}
+
+model SystemLog {
+  id         String   @id @default(uuid())
+  level      String
+  message    String
+  contextJson Json?
+  createdAt  DateTime @default(now())
+}
+
+model FeatureFlag {
+  id        String    @id @default(uuid())
+  key       String    @unique
+  isEnabled Boolean   @default(false)
+  planScope PlanScope @default(all)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
