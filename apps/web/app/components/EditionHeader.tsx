@@ -38,6 +38,9 @@ export default function EditionHeader() {
           <a className="text-slate-700 underline" href="/ats">
             ATS check
           </a>
+          <a className="text-slate-700 underline" href="/onboarding">
+            Onboarding
+          </a>
           <a className="text-blue-700 underline" href={editionConfig.headerHelpHref}>
             {editionConfig.headerHelpLabel}
           </a>
