@@ -19,6 +19,12 @@ export interface EducationEntry {
   period: string;
 }
 
+export interface CustomSection {
+  key: string;
+  title: string;
+  lines: string[];
+}
+
 export interface CandidateProfile {
   // SAMPLE marker: every sample profile in sample-data.ts is fictional.
   sampleMarker: "SAMPLE";
@@ -32,6 +38,10 @@ export interface CandidateProfile {
   education: EducationEntry[];
   skills: string[];
   languages: string[];
+  // Added in increment 3 for the builder. Optional, so increment 1
+  // profiles still render unchanged. Custom sections are rendered in
+  // section order, after the standard sections unless reordered.
+  customSections?: CustomSection[];
 }
 
 export interface RenderSection {
