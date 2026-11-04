@@ -5,3 +5,4 @@ export * from "./render";
 export * from "./exports/pdf";
 export * from "./exports/docx";
 export * from "./exports/file-import";
+export * from "./exports/letter";
