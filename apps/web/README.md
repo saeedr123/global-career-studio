@@ -1,11 +1,12 @@
-# Global Career Studio web app (builder, auth, dashboard, increment 6)
+# Global Career Studio web app (builder, auth, dashboard, writer, letters, ATS, increment 7)
 
-Status: Phase 2 increment 6. This is NOT a finished product. There
-are no payments, AI features, letters, ATS analysis, or country
+Status: Phase 2 increment 7. This is NOT a finished product. There
+are no payments, no connected AI generation, and no country
 packs in this app, and no database is connected. Accounts, profiles,
 and documents are local browser data only, clearly labelled as a
 temporary stand in until Prisma validation passes and a real database
-is connected.
+is connected. The writer, letters, and ATS check in this increment
+are local features, not connected services.
 
 ## What is in this increment
 
@@ -61,6 +62,25 @@ is connected.
   connected, and are not working features. The builder page can open
   a dashboard document through `gcs-open-document`, and can save a
   draft back to the master profile only after confirmation.
+- Local writer, letter studio, and heuristic ATS check in increment 7:
+  local writer at `app/writer/page.tsx` with rule based rewrites in
+  `lib/writer-core.mjs`, shown beside the original and applied only
+  after the user confirms, with missing fields reported as prompts,
+  never filled in, and no text sent anywhere. Letter studio at
+  `app/letters/page.tsx` with 12 letter types (cover, motivation,
+  reference, recommendation, employment verification, resignation,
+  follow up, thank you, job application email, LinkedIn About, bio,
+  personal statement), generated from user supplied fields only,
+  editable before export, saved locally, and exported to PDF and
+  DOCX through the template engine letter export in
+  `packages/template-engine/src/exports/letter.ts` via
+  `app/api/letter-export/route.ts`. Heuristic ATS check at
+  `app/ats/page.tsx` with keyword overlap against a pasted job
+  description, section presence, contact presence, template parse
+  friendliness, and text order, stated plainly as a heuristic check,
+  not a real ATS, with no pass or fail result and no guaranteed
+  outcome. The pasted job description is page state only, never
+  saved and never sent.
 - Job specific versions in increment 5, local browser drafts only:
   create a named job version from the master draft with a user typed
   job title and company, both required and never invented, edit a
@@ -134,15 +154,21 @@ npm run build
 npm run typecheck
 npm run test:builder
 npm run test:auth
+npm run test:writer
 ```
 
-In increment 6, typecheck passed, the production build passed for both
-editions (routes `/`, `/builder` 6.71 kB, `/dashboard` 3.54 kB
-commercial and 2.73 kB nvconsult, `/auth` 4.97 kB commercial and
-4.16 kB nvconsult, `/profile` 1.88 kB, plus `/api/export`,
-`/api/import`, and `/api/auth`), the builder test passed 25 of 25,
-the import test passed 6 of 6, the auth test passed 12 of 12, and
-the template engine test passed 64 of 64.
+In increment 7, typecheck passed, the production build passed for both
+editions (routes `/`, `/builder` 8.36 kB, `/dashboard` 5.31 kB
+commercial and 4.52 kB nvconsult, `/auth` 4.97 kB commercial and
+4.16 kB nvconsult, `/profile` 3.54 kB, `/writer` 5.19 kB,
+`/letters` 5.38 kB, `/ats` 4.91 kB, plus `/api/export`,
+`/api/import`, `/api/letter-export`, and `/api/auth`), the builder
+test passed 25 of 25, the import test passed 6 of 6, the auth test
+passed 12 of 12, the writer test passed 15 of 15, and
+the template engine test passed 64 of 64. A live letter export test
+returned PDF 200 at 1,553 bytes and DOCX 200 at 7,503 bytes, an empty
+letter returned 400, and the writer, letters, and ATS pages each
+returned 200. The test server was stopped after the test.
 The dashboard layout is one column on phones, two columns on tablets,
 and three columns on desktops.
 
@@ -152,8 +178,22 @@ and three columns on desktops.
 - `app/page.tsx`: home page.
 - `app/dashboard/page.tsx`: working local dashboard, listing local
   drafts and job versions, with open in builder, duplicate, rename,
-  and delete with confirmation. AI credits, subscription, and human
-  review are still not yet connected placeholders on this page.
+  and delete with confirmation, plus links to the local writer, the
+  letter studio, and the heuristic ATS check. AI credits,
+  subscription, and human review are still not yet connected
+  placeholders on this page.
+- `app/writer/page.tsx`: local drafting assistance, rewrites shown
+  beside the original and applied only after confirmation.
+- `app/letters/page.tsx`: letter studio with 12 letter types,
+  editable generated text, local save, and PDF and DOCX export.
+- `app/ats/page.tsx`: heuristic ATS check, keyword overlap, section
+  and contact presence, template parse note, and text order.
+- `app/api/letter-export/route.ts`: letter PDF and DOCX export
+  through the template engine.
+- `lib/writer-core.mjs`: writer, letter, and ATS logic, tested with
+  plain Node.
+- `scripts/test-writer.mjs`: writer, letter, and ATS tests, plus a
+  real engine letter export check.
 - `app/auth/page.tsx`: local account page, signup, login, logout,
   and password reset, hashed passwords only.
 - `app/profile/page.tsx`: master profile editor, with load from
