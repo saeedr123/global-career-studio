@@ -22,7 +22,8 @@
     "start": "node node_modules/next/dist/bin/next start",
     "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
     "test:builder": "node scripts/test-builder.mjs",
-    "test:auth": "node scripts/test-auth.mjs"
+    "test:auth": "node scripts/test-auth.mjs",
+    "test:writer": "node scripts/test-writer.mjs"
   },
   "version": "0.1.0"
 }
