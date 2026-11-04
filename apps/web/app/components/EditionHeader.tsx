@@ -13,7 +13,7 @@ export default function EditionHeader() {
         <div>
           <p className="text-lg font-bold text-navy">{editionConfig.brandName}</p>
           <p className="text-sm text-slate-500">
-            Edition: {editionConfig.edition} (placeholder shell, not a finished product)
+            Edition: {editionConfig.edition} (local only, not a finished product)
           </p>
         </div>
         <nav className="flex flex-wrap items-center gap-4 text-sm" aria-label="Main">
@@ -21,7 +21,13 @@ export default function EditionHeader() {
             Home
           </a>
           <a className="text-slate-700 underline" href="/dashboard">
-            Dashboard (shell)
+            Dashboard
+          </a>
+          <a className="text-slate-700 underline" href="/auth">
+            Account
+          </a>
+          <a className="text-slate-700 underline" href="/profile">
+            Profile
           </a>
           <a className="text-blue-700 underline" href={editionConfig.headerHelpHref}>
             {editionConfig.headerHelpLabel}
