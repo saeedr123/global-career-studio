@@ -1,5 +1,6 @@
-// Prisma schema for Global Career Studio, Phase 2 increment 1.
-// Source: docs/database-design.md (Phase 1 design, now implemented as schema only).
+// Prisma schema for Global Career Studio, Phase 2 increment 2.
+// Source: docs/database-design.md (Phase 1 design, updated for split ready
+// design in increment 2). Combined now, split later if needed.
 // No migrations are claimed as run here. Run migrations against a test
 // database, not production, and only after a hosted Postgres URL is set.
 // All ids are UUIDs. All timestamps are UTC (Prisma stores DateTime in UTC).
@@ -19,6 +20,14 @@ datasource db {
 enum Role {
   user
   admin
+}
+
+// Entry edition for split ready design. This records where a user or
+// document came from, it is not a hard restriction on later use.
+// A later split partitions by this value, see docs/architecture.md.
+enum Edition {
+  nvconsult
+  commercial
 }
 
 enum DocumentType {
@@ -110,6 +119,7 @@ model User {
   name         String?
   passwordHash String
   role         Role      @default(user)
+  edition      Edition   @default(commercial)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
@@ -124,6 +134,7 @@ model User {
   adminAuditLogs     AdminAuditLog[]
 
   @@index([email])
+  @@index([edition])
 }
 
 model Profile {
@@ -234,6 +245,7 @@ model Document {
   paperSize       PaperSize      @default(A4)
   pageCountTarget Int            @default(1)
   status          DocumentStatus @default(draft)
+  edition         Edition        @default(commercial)
   deletedAt       DateTime?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
