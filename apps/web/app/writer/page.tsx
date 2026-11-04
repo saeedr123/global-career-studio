@@ -9,6 +9,7 @@ import {
   suggestSkillRewrite,
   suggestSummaryRewrite
 } from "../../lib/writer-core.mjs";
+import { effectivePlan, isAdvancedAiAllowed } from "../../lib/billing-core.mjs";
 
 // Local drafting assistance, Phase 2 increment 7, local only.
 // This page rewrites only text the user already supplied, using local
@@ -26,8 +27,20 @@ export default function WriterPage() {
   const [bulletInput, setBulletInput] = useState("");
   const [bulletSuggestion, setBulletSuggestion] = useState("");
   const [message, setMessage] = useState("");
+  const [subscriptionPlan, setSubscriptionPlan] = useState("free");
+  const [subscriptionTrialEnd, setSubscriptionTrialEnd] = useState("");
 
   useEffect(() => {
+    try {
+      const subscriptionRaw = window.localStorage.getItem("gcs-subscription");
+      if (subscriptionRaw) {
+        const subscription = JSON.parse(subscriptionRaw);
+        setSubscriptionPlan(effectivePlan(subscription));
+        setSubscriptionTrialEnd(subscription.trialEnd || "");
+      }
+    } catch {
+      // An unreadable subscription is ignored, the plan stays Free.
+    }
     try {
       const draftRaw = window.localStorage.getItem(DRAFT_KEY);
       if (draftRaw) {
@@ -79,6 +92,15 @@ export default function WriterPage() {
       <p className="mt-3 rounded border border-amber-300 bg-amber-50 p-4 text-slate-800">
         This writer runs in your browser only. No text is sent anywhere, no AI provider is connected, and a connected AI provider will replace this local module later, once a provider is chosen. It only rephrases words you already supplied. It never adds an employer, a job title, a date, a certification, or an achievement.
       </p>
+      <section className="mt-6 rounded border border-slate-200 bg-white p-4">
+        <h2 className="font-semibold">AI access, local plan: {subscriptionPlan === "trial" ? `Trial, ends ${subscriptionTrialEnd || "date not set"}` : subscriptionPlan}</h2>
+        {isAdvancedAiAllowed(subscriptionPlan) ? (
+          <p className="mt-2 text-slate-700">Advanced AI is included in your local plan in config, but no connected AI provider is built yet, so only the local rewriting below runs here. Nothing here is presented as connected AI.</p>
+        ) : (
+          <p className="mt-2 text-slate-700">Advanced AI features, including job specific tailoring, are locked on the Free plan. Basic local rewriting below is still available on Free. No checkout or payment is shown here.</p>
+        )}
+        <p className="mt-2"><a className="text-blue-700 underline" href="/subscription">Open the subscription page</a></p>
+      </section>
 
       {missing.length > 0 && (
         <section className="mt-6 rounded border border-slate-200 bg-white p-4">
