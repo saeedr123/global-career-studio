@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  TEMPLATES,
   addCustomSection,
   buildPreviewSections,
   createDefaultSettings,
@@ -16,10 +17,11 @@ import {
   sectionOrderFor,
   sectionTitle,
   serialiseDraft,
+  templateById,
   validateProfile
 } from "../../lib/builder-core.mjs";
 
-// CV builder, Phase 2 increment 3.
+// CV builder, Phase 2 increment 4: all 10 version 1 templates.
 // Local draft only. No real sign in, no account, no payment, no AI, and
 // no database in this increment. Drafts live in browser localStorage
 // until Prisma validation passes and a real database is connected.
@@ -100,7 +102,15 @@ export default function BuilderPage() {
   const order = sectionOrderFor(profile, settings.sectionOrder);
   const preview = buildPreviewSections(profile, settings.sectionOrder);
   const missing = validateProfile(profile);
-  const isModern = settings.templateId === "modern-professional";
+  const selectedTemplate = templateById(settings.templateId);
+  const isBand = ["modern-professional", "corporate", "sidebar"].includes(settings.templateId);
+  const isCentered = ["executive", "elegant"].includes(settings.templateId);
+  const isTwoColumnPreview = ["sidebar", "two-column"].includes(settings.templateId);
+  const photoNote = !selectedTemplate.photoAllowed
+    ? `Photo is not included for ${selectedTemplate.name} by design.`
+    : settings.includePhoto
+      ? "Photo is included for this template."
+      : "Photo is not included, because the photo box is unchecked.";
 
   function updateProfile(patch: any) {
     setProfile((current: any) => ({ ...current, ...patch }));
@@ -213,9 +223,12 @@ export default function BuilderPage() {
             value={settings.templateId}
             onChange={(event) => setSettings({ ...settings, templateId: event.target.value })}
           >
-            <option value="ats-minimal">ATS Minimal</option>
-            <option value="modern-professional">Modern Professional</option>
+            {TEMPLATES.map((template: any) => (
+              <option key={template.id} value={template.id}>{template.name}</option>
+            ))}
           </select>
+          <span className="mt-1 block text-sm text-slate-500">{selectedTemplate.description}</span>
+          <span className="block text-sm text-slate-500">{selectedTemplate.atsNote}</span>
         </label>
         <label className="block">
           <span className="text-sm font-semibold">Paper size</span>
@@ -235,11 +248,7 @@ export default function BuilderPage() {
             onChange={(event) => setSettings({ ...settings, includePhoto: event.target.checked })}
           />{" "}
           Include photo
-          <span className="block text-sm text-slate-500">
-            {photoIncluded(settings.templateId, settings.includePhoto)
-              ? "Photo is included for this template."
-              : "Photo is not included for ATS Minimal by design."}
-          </span>
+          <span className="block text-sm text-slate-500">{photoNote}</span>
         </label>
         <div>
           <p className="text-sm font-semibold">Draft status</p>
@@ -420,8 +429,13 @@ export default function BuilderPage() {
             exports use the real template engine and may paginate differently.
           </p>
           <article className="mt-4 rounded border border-slate-200 bg-white p-6">
-            {isModern ? (
+            {isBand ? (
               <header className="rounded bg-navy p-4 text-white">
+                <h3 className="text-2xl font-bold">{profile.fullName}</h3>
+                <p>{profile.headline}</p>
+              </header>
+            ) : isCentered ? (
+              <header className="text-center">
                 <h3 className="text-2xl font-bold">{profile.fullName}</h3>
                 <p>{profile.headline}</p>
               </header>
@@ -436,24 +450,57 @@ export default function BuilderPage() {
               {photoIncluded(settings.templateId, settings.includePhoto) ? " | [SAMPLE photo placeholder]" : ""}
             </p>
             <p className="mt-2 text-sm text-slate-500">
-              Template: {isModern ? "Modern Professional" : "ATS Minimal"}, paper: {settings.paperSize === "US_LETTER" ? "US Letter" : "A4"}
+              Template: {selectedTemplate.name}, paper: {settings.paperSize === "US_LETTER" ? "US Letter" : "A4"}
             </p>
-            {preview.map((section: any) => (
-              <section key={section.key} className="mt-5">
-                <h4 className={`font-bold ${isModern ? "text-navy" : "uppercase"}`}>{section.title}</h4>
-                {isModern && <hr className="mt-1 border-t-2 border-gold" />}
-                {section.lines.map((line: string, index: number) => (
-                  <p key={index} className="mt-2">{line}</p>
-                ))}
-                {section.bullets.map((group: string[], groupIndex: number) => (
-                  <div key={groupIndex} className="mt-3">
-                    {group.map((line: string, lineIndex: number) => (
-                      <p key={lineIndex} className={lineIndex === 0 ? "font-semibold" : "ml-3"}>{lineIndex === 0 ? line : `- ${line}`}</p>
-                    ))}
-                  </div>
-                ))}
-              </section>
-            ))}
+            <p className="mt-1 text-sm text-slate-500">{selectedTemplate.atsNote}</p>
+            {isTwoColumnPreview ? (
+              <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-3">
+                <div className={settings.templateId === "sidebar" ? "sm:order-1" : "sm:order-2"}>
+                  {preview.filter((section: any) => ["skills", "languages"].includes(section.key)).map((section: any) => (
+                    <section key={section.key} className="mt-5">
+                      <h4 className="font-bold uppercase text-navy">{section.title}</h4>
+                      {section.lines.map((line: string, index: number) => (
+                        <p key={index} className="mt-2">{line}</p>
+                      ))}
+                    </section>
+                  ))}
+                </div>
+                <div className={settings.templateId === "sidebar" ? "sm:order-2 sm:col-span-2" : "sm:order-1 sm:col-span-2"}>
+                  {preview.filter((section: any) => !["skills", "languages"].includes(section.key)).map((section: any) => (
+                    <section key={section.key} className="mt-5">
+                      <h4 className="font-bold text-navy">{section.title}</h4>
+                      {section.lines.map((line: string, index: number) => (
+                        <p key={index} className="mt-2">{line}</p>
+                      ))}
+                      {section.bullets.map((group: string[], groupIndex: number) => (
+                        <div key={groupIndex} className="mt-3">
+                          {group.map((line: string, lineIndex: number) => (
+                            <p key={lineIndex} className={lineIndex === 0 ? "font-semibold" : "ml-3"}>{lineIndex === 0 ? line : `- ${line}`}</p>
+                          ))}
+                        </div>
+                      ))}
+                    </section>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              preview.map((section: any) => (
+                <section key={section.key} className="mt-5">
+                  <h4 className={`font-bold ${isBand ? "text-navy" : isCentered ? "text-center" : "uppercase"}`}>{section.title}</h4>
+                  {isBand && <hr className="mt-1 border-t-2 border-gold" />}
+                  {section.lines.map((line: string, index: number) => (
+                    <p key={index} className="mt-2">{line}</p>
+                  ))}
+                  {section.bullets.map((group: string[], groupIndex: number) => (
+                    <div key={groupIndex} className="mt-3">
+                      {group.map((line: string, lineIndex: number) => (
+                        <p key={lineIndex} className={lineIndex === 0 ? "font-semibold" : "ml-3"}>{lineIndex === 0 ? line : `- ${line}`}</p>
+                      ))}
+                    </div>
+                  ))}
+                </section>
+              ))
+            )}
           </article>
         </div>
       </div>
