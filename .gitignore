@@ -1,0 +1,10 @@
+# Dependencies and build output. Never commit these.
+node_modules/
+dist/
+.next/
+out/
+# Test output files from the template engine export test.
+packages/template-engine/test-output/
+# Local environment files. Only .env.example is committed.
+.env
+.env.local
