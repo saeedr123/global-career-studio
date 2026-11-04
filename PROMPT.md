@@ -381,13 +381,13 @@ Maintain PROJECT_STATUS.md throughout development. Never claim a feature is comp
 
 These are not blockers for Phase 0 and Phase 1, but they are blockers for a commercial launch, and must be decided by Ali, not invented by Muse:
 - Final price for monthly and annual premium, and currency. Starting defaults in section 14 are configuration defaults, not prices.
-- Stripe account owner, business details, and VAT treatment confirmation.
-- AI provider choice and budget cap for AI credits, plus fallback provider if the primary is unavailable.
-- Domain or subdomain for the tools site, and the exact nvconsult.eu link locations. Note, 4 November 2026: the tools site domain idea is on hold. Do not check domain availability and do not purchase anything until Ali reopens it. Use placeholder domain configuration only.
-- Hosting provider for the Next.js app, hosted Postgres provider, and object storage provider.
+- Stripe account owner, business details, and VAT treatment confirmation. Update, increment 11: Stripe is on hold per owner decision, to be added later. No Stripe integration work beyond the existing null placeholder config was done in increment 11.
+- AI provider choice and budget cap for AI credits, plus fallback provider if the primary is unavailable. Update, increment 11: AI provider is now Muse AI, key and budget cap pending. Connected Muse AI is ready for a key and is NOT live until the owner adds a key (variable name only: GCS_AI_API_KEY) and sets a budget cap (variable name only: GCS_AI_BUDGET_CAP). No budget cap has been set yet. The writer falls back to the existing local rule based writer when no key is configured, with all guardrails unchanged.
+- Domain or subdomain for the tools site, and the exact nvconsult.eu link locations. Note, 4 November 2026: the tools site domain idea is on hold. Do not check domain availability and do not purchase anything until Ali reopens it. Use placeholder domain configuration only. Update, increment 11: first launch is on nvconsult.eu, separate domain later.
+- Hosting provider for the Next.js app, hosted Postgres provider, and object storage provider. Update, increment 11: hosting plan completed in docs/deployment-preparation.md section 10, provider not chosen, no deployment executed.
 - GitHub repository name, owner, and visibility.
-- Privacy policy, terms, and refund policy final wording, with a legal check for GDPR and consumer rights.
-- Human review service details for the NVConsult upsell: turnaround, scope, and price or free scope, so the dashboard offer is honest.
+- Privacy policy, terms, and refund policy final wording, with a legal check for GDPR and consumer rights. Update, increment 11: legal docs completed in the repo in docs/legal/ (privacy policy, terms of service, refund policy, trial and billing disclosure, plus a single owner to confirm list), finalized for owner review only, legal check recommended before live, not published on any live site. Refund window, human review turnaround, and human review price are explicit owner to confirm placeholders, never invented.
+- Human review service details for the NVConsult upsell: turnaround, scope, and price or free scope, so the dashboard offer is honest. Update, increment 11: human review scope completed in docs/human-review-scope.md, turnaround and price owner to confirm, free resume review and free LinkedIn review remain free extras.
 
 Until these are decided, the system must be built with placeholders and configuration, not with invented prices, invented legal wording, or a fake payment flow.
 
