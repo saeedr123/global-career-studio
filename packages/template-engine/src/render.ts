@@ -3,21 +3,27 @@ import type {
   RenderedDocument,
   RenderOptions,
   RenderSection,
+  TemplateDefinition,
   TemplateId
 } from "./types";
 import { getTemplate } from "./templates";
 
-function buildSections(profile: CandidateProfile): Record<string, RenderSection> {
+function buildSections(
+  profile: CandidateProfile,
+  template: TemplateDefinition
+): Record<string, RenderSection> {
+  const titleFor = (key: string, fallback: string): string =>
+    template.sectionTitles?.[key] ?? fallback;
   const sections: Record<string, RenderSection> = {
     summary: {
       key: "summary",
-      title: "Summary",
+      title: titleFor("summary", "Summary"),
       lines: [`SAMPLE: ${profile.summary}`],
       bullets: []
     },
     experience: {
       key: "experience",
-      title: "Experience",
+      title: titleFor("experience", "Experience"),
       lines: [],
       bullets: profile.experience.map((entry) => [
         `${entry.jobTitle}, ${entry.employer}, ${entry.location}, ${entry.period}`,
@@ -26,7 +32,7 @@ function buildSections(profile: CandidateProfile): Record<string, RenderSection>
     },
     education: {
       key: "education",
-      title: "Education",
+      title: titleFor("education", "Education"),
       lines: profile.education.map(
         (entry) => `${entry.qualification}, ${entry.institution}, ${entry.period}`
       ),
@@ -34,13 +40,13 @@ function buildSections(profile: CandidateProfile): Record<string, RenderSection>
     },
     skills: {
       key: "skills",
-      title: "Skills",
+      title: titleFor("skills", "Skills"),
       lines: [profile.skills.join(", ")],
       bullets: []
     },
     languages: {
       key: "languages",
-      title: "Languages",
+      title: titleFor("languages", "Languages"),
       lines: [profile.languages.join(", ")],
       bullets: []
     }
@@ -89,7 +95,7 @@ export function renderDocument(
   options: RenderOptions
 ): RenderedDocument {
   const template = getTemplate(templateId);
-  const all = buildSections(profile);
+  const all = buildSections(profile, template);
   const customKeys = (profile.customSections || []).map((item) => item.key);
   const effectiveOrder = [...template.defaultSectionOrder, ...customKeys];
   const keys = orderSections(effectiveOrder, options.sectionOrder);
