@@ -1,18 +1,61 @@
-# Global Career Studio web app (builder, auth, dashboard, writer, letters, ATS, packs, billing config, increment 9)
+# Global Career Studio web app (builder, auth, dashboard, writer, letters, ATS, packs, billing config, admin local only, increment 10)
 
-Status: Phase 2 increment 9. This is NOT a finished product. There
-are no payments, no connected AI generation, and no database is
-connected. Accounts, profiles, and documents are local browser data
-only, clearly labelled as a temporary stand in until Prisma validation
-passes and a real database is connected. The writer, letters, ATS
-check, country packs, language packs, onboarding wizard, and billing
-config in this app are local features, not connected services.
-Billing config is configuration and local entitlement checks only.
-No checkout, payment form, or Stripe integration is working.
-Country packs are guidance only, not legal advice.
+Status: Phase 2 increment 10, the final code increment in this
+overnight run. This is NOT a finished product and NOT launch ready.
+There are no payments, no connected AI generation, and no database
+is connected. Accounts, profiles, and documents are local browser
+data only, clearly labelled as a temporary stand in until Prisma
+validation passes and a real database is connected. The writer,
+letters, ATS check, country packs, language packs, onboarding
+wizard, billing config, and admin page in this app are local
+features, not connected services. Billing config is configuration
+and local entitlement checks only. No checkout, payment form, or
+Stripe integration is working. The admin page is local only, not a
+secured production admin. Country packs are guidance only, not
+legal advice.
 
 ## What is in this increment
 
+- Admin dashboard, local only, in increment 10, at
+  `app/admin/page.tsx`, with logic in `lib/admin-core.mjs`. It
+  lists aggregated counts only: local documents by template, by
+  country pack, and by plan. No CV text, no user names, no emails,
+  and no document content are shown, and none are written to the
+  audit log. Versioning controls for templates, prompts, and
+  country packs use config objects with version, preview, publish,
+  and rollback actions that change only the local config in this
+  browser, clearly labelled. Every admin action needs a reason and
+  is written to a local audit log with action, time, and reason,
+  with emails and secret style values sanitised from the summary.
+  Feature flags for writer, letters, ATS, packs, and onboarding
+  can be turned on or off locally, with the change logged. The
+  page states plainly that it is local only, not a secured
+  production admin, until a real database and real admin auth are
+  connected. The admin page is linked from the edition aware
+  header as Admin, local only.
+- Full automated testing in increment 10: a single runner at
+  `scripts/run-all-tests.mjs` runs every suite in order (template
+  engine, builder, import, auth, writer, packs, billing, admin, and
+  end to end smoke), reports pass and fail counts per suite, and
+  exits non zero on any failure. Admin tests at
+  `scripts/test-admin.mjs` cover aggregated counts with no CV
+  content leaked, version publish and rollback, feature flag on
+  and off, and audit log entries with no secrets. An end to end
+  smoke test at `scripts/test-e2e-smoke.mjs` walks a local visitor
+  flow with local data only, reusing the existing core modules:
+  onboarding suggestion, builder draft, template switch, country
+  pack application, writer suggestion with confirmation, letter
+  generation, ATS check, and export through the real engine.
+- Deployment preparation, docs only, in increment 10, at
+  `docs/deployment-preparation.md` in the project root. It lists,
+  in order, what must happen before any real deployment: Prisma
+  validate and test migration passing elsewhere, real Postgres,
+  object storage and hosting choices, Stripe account and VAT
+  confirmation, AI provider choice and budget cap, domain choice,
+  legal wording with legal check, human review scope, and a launch
+  checklist with guest verification, mobile check, and full click
+  through. Nothing was deployed, bought, or created as a live
+  account, and the doc is not a launch approval.
 - CV builder at `app/builder/page.tsx`, linked from the dashboard.
   Edit personal details, summary, experience, education, skills, and
   languages. Add jobs, education, and custom sections. Reorder sections
@@ -202,13 +245,39 @@ Then open the local address shown by Next.js.
 ```
 npm run build
 npm run typecheck
+npm run test:all
+```
+
+`npm run test:all` runs every suite through
+`scripts/run-all-tests.mjs` and exits non zero on any failure.
+Individual suites can still be run on their own:
+
+```
 npm run test:builder
+npm run test:import
 npm run test:auth
 npm run test:writer
 npm run test:packs
 npm run test:billing
+npm run test:admin
+npm run test:e2e
 ```
 
+In increment 10, typecheck passed with no failure, the single test
+runner passed 193 of 193 across 9 suites (template engine 64 of 64,
+builder 25 of 25, import 6 of 6, auth 12 of 12, writer 15 of 15,
+packs 20 of 20, billing 21 of 21, admin 19 of 19, end to end smoke
+11 of 11, with a smoke PDF of 2,160 bytes and a smoke DOCX of 7,921
+bytes), and the production build passed for both editions
+(commercial routes `/`, `/admin` 3.24 kB, `/builder` 13.1 kB,
+`/dashboard` 5.38 kB, `/auth` 4.97 kB, `/profile` 3.54 kB,
+`/writer` 7.27 kB, `/letters` 7.52 kB, `/ats` 4.91 kB, `/onboarding`
+3.56 kB, `/subscription` 4.15 kB, plus `/api/export`, `/api/import`,
+`/api/letter-export`, and `/api/auth`; nvconsult routes `/admin`
+3.24 kB, `/dashboard` 4.6 kB and `/auth` 4.16 kB, same other routes).
+A live server test returned 200 for the admin page, with the
+"Admin, local only" heading and the aggregated counts section
+present. The test server was stopped after the test.
 In increment 9, typecheck passed after one real failure was fixed, not
 hidden: the new export routes first imported the billing core with a
 path that resolved inside `app/`, which TypeScript rejected, so the
@@ -291,6 +360,18 @@ and three columns on desktops.
 - `app/subscription/page.tsx`: subscription page, placeholder billing
   only, with current plan, trial status, entitlements, downgrade
   behaviour, and local only trial, cancel, and move to Free actions.
+- `app/admin/page.tsx`: admin page, local only, with aggregated
+  counts, versioning controls, feature flags, and a local audit log.
+- `lib/admin-core.mjs`: admin logic, tested with plain Node, with
+  aggregated counts, config versioning, feature flags, and audit
+  logging, and no CV content or secrets stored.
+- `scripts/run-all-tests.mjs`: single test runner for all 9 suites,
+  with per suite pass and fail counts, exiting non zero on failure.
+- `scripts/test-admin.mjs`: admin tests for counts, versioning,
+  flags, and audit entries.
+- `scripts/test-e2e-smoke.mjs`: end to end smoke test for one local
+  visitor flow, reusing the existing core modules and the real
+  template engine for export.
 - `app/builder/page.tsx`: working builder, local drafts only, with
   PDF/DOCX file import, job specific versions, a country pack and
   language selector, onboarding suggestion application, and local
