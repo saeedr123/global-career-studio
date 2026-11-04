@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@global-career-studio/template-engine": "file:../../packages/template-engine",
     "next": "^14.2.35",
     "react": "18.3.1",
     "react-dom": "18.3.1"
@@ -19,7 +20,8 @@
     "build": "node node_modules/next/dist/bin/next build",
     "dev": "node node_modules/next/dist/bin/next dev",
     "start": "node node_modules/next/dist/bin/next start",
-    "typecheck": "node node_modules/typescript/bin/tsc --noEmit"
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
+    "test:builder": "node scripts/test-builder.mjs"
   },
   "version": "0.1.0"
 }
