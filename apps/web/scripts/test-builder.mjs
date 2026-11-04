@@ -5,6 +5,7 @@
 
 import assert from "node:assert";
 import {
+  TEMPLATES,
   addCustomSection,
   buildPreviewSections,
   createDefaultSettings,
@@ -18,6 +19,7 @@ import {
   restoreVersion,
   sectionOrderFor,
   serialiseDraft,
+  templateById,
   validateProfile
 } from "../lib/builder-core.mjs";
 
@@ -59,10 +61,31 @@ check("custom section add and preview order", () => {
   assert.deepEqual(custom.lines, ["Sample project line one", "Sample project line two"]);
 });
 
+check("template list has all 10 version 1 templates, with descriptions", () => {
+  assert.equal(TEMPLATES.length, 10);
+  assert.deepEqual(
+    TEMPLATES.map((item) => item.id),
+    [
+      "ats-minimal", "modern-professional", "executive", "corporate", "elegant",
+      "european", "us-resume", "uk-cv", "sidebar", "two-column"
+    ]
+  );
+  for (const item of TEMPLATES) {
+    assert.ok(item.name && item.description && item.atsNote, `missing copy for ${item.id}`);
+    assert.equal(templateById(item.id).id, item.id);
+  }
+  assert.equal(templateById("unknown-template").id, "ats-minimal");
+});
+
 check("template switch and photo flag", () => {
   assert.equal(photoIncluded("ats-minimal", true), false);
   assert.equal(photoIncluded("modern-professional", true), true);
   assert.equal(photoIncluded("modern-professional", false), false);
+  assert.equal(photoIncluded("us-resume", true), false);
+  assert.equal(photoIncluded("uk-cv", true), false);
+  assert.equal(photoIncluded("sidebar", true), true);
+  assert.equal(photoIncluded("two-column", true), true);
+  assert.equal(photoIncluded("european", true), true);
 });
 
 check("paper size settings are preserved in a draft", () => {
@@ -126,7 +149,7 @@ const engine = await import("../../../packages/template-engine/dist/index.js");
 
 async function exportCheck() {
   const withCustom = addCustomSection(profile, "Projects", "Sample project line.");
-  for (const templateId of ["ats-minimal", "modern-professional"]) {
+  for (const templateId of TEMPLATES.map((item) => item.id)) {
     const rendered = engine.renderDocument(withCustom, templateId, {
       paperSize: "A4",
       pageCountTarget: 1,
