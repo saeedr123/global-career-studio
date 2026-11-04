@@ -8,11 +8,15 @@ import {
   TEMPLATES,
   addCustomSection,
   buildPreviewSections,
+  compareJobVersions,
   createDefaultSettings,
   createDraft,
+  createJobVersion,
   createSampleProfile,
   moveSection,
+  parseCvText,
   parseDraft,
+  parseFileImport,
   parseImport,
   photoIncluded,
   pushVersion,
@@ -142,6 +146,87 @@ check("import parse, with correction before use", () => {
 check("import parse reports unparsed lines, never silently drops them", () => {
   const result = parseImport("Name: X\nSome random line without a field");
   assert.deepEqual(result.unparsedLines, ["Some random line without a field"]);
+});
+
+check("file import parse, engine layout with headings and bullets", () => {
+  const text = [
+    "Sam Sample",
+    "Sample Project Coordinator",
+    "SAMPLE: sam.sample@example.test | +00 000 000 000 | Sample City",
+    "Summary",
+    "Fictional sample summary.",
+    "Experience",
+    "Sample Project Coordinator, Sample Projects Ltd, Sample City, 2022 to 2024",
+    "- Coordinated sample schedules.",
+    "Education",
+    "Sample Diploma in Project Support, Sample College, 2018 to 2020",
+    "Skills",
+    "Planning, Scheduling",
+    "Languages",
+    "English (Fluent, sample level)",
+    "Projects",
+    "Sample project line."
+  ].join("\n");
+  const result = parseCvText(text);
+  assert.equal(result.profile.fullName, "Sam Sample");
+  assert.equal(result.profile.email, "sam.sample@example.test");
+  assert.equal(result.profile.experience.length, 1);
+  assert.equal(result.profile.experience[0].employer, "Sample Projects Ltd");
+  assert.deepEqual(result.profile.experience[0].bullets, ["Coordinated sample schedules."]);
+  assert.equal(result.profile.education.length, 1);
+  assert.deepEqual(result.profile.languages, ["English (Fluent, sample level)"]);
+  assert.equal(result.profile.customSections.length, 1);
+  assert.equal(result.profile.customSections[0].title, "Projects");
+  assert.deepEqual(result.unparsedLines, []);
+});
+
+check("file import parse, DOCX style plain bullet lines", () => {
+  const text = [
+    "Sam Sample",
+    "Sample Project Coordinator",
+    "sam.sample@example.test | +00 000 000 000 | Sample City",
+    "Experience",
+    "Sample Project Coordinator, Sample Projects Ltd, Sample City, 2022 to 2024",
+    "Coordinated sample schedules.",
+    "Education",
+    "Sample Diploma in Project Support, Sample College, 2018 to 2020"
+  ].join("\n");
+  const result = parseCvText(text);
+  assert.deepEqual(result.profile.experience[0].bullets, ["Coordinated sample schedules."]);
+});
+
+check("file import parse reports unparsed lines and empty input", () => {
+  const result = parseCvText("Sam Sample\nSample Project Coordinator\nSome random line");
+  assert.deepEqual(result.unparsedLines, ["Some random line"]);
+  const empty = parseFileImport("   ");
+  assert.equal(empty.empty, true);
+  assert.ok(empty.warnings.length > 0);
+  assert.ok(empty.warnings[0].toLowerCase().includes("scanned") || empty.warnings[0].toLowerCase().includes("no readable"));
+});
+
+check("job version creation, isolation from master, and missing job check", () => {
+  const master = createDraft(profile, settings, "Master draft");
+  const version = createJobVersion(master, "Sample Analyst", "Sample Firm Ltd");
+  assert.equal(version.label, "Sample Analyst at Sample Firm Ltd");
+  version.profile.headline = "Changed headline";
+  version.settings.templateId = "modern-professional";
+  assert.equal(master.profile.headline, "Sample Project Coordinator");
+  assert.equal(master.settings.templateId, "ats-minimal");
+  assert.throws(() => createJobVersion(master, "", "Sample Firm Ltd"), /required/);
+  assert.throws(() => createJobVersion(master, "Sample Analyst", ""), /required/);
+});
+
+check("job version compare, structure only", () => {
+  const master = createDraft(profile, settings, "Master draft");
+  const version = createJobVersion(master, "Sample Analyst", "Sample Firm Ltd");
+  const same = compareJobVersions(master, version);
+  assert.equal(same.same, true);
+  version.settings.templateId = "executive";
+  version.settings.paperSize = "US_LETTER";
+  const different = compareJobVersions(master, version);
+  assert.equal(different.same, false);
+  assert.ok(different.differences.some((item) => item.includes("Template")));
+  assert.ok(different.differences.some((item) => item.includes("Paper size")));
 });
 
 // Export test, using the real template engine, including a custom section.
