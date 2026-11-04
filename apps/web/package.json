@@ -23,7 +23,8 @@
     "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
     "test:builder": "node scripts/test-builder.mjs",
     "test:auth": "node scripts/test-auth.mjs",
-    "test:writer": "node scripts/test-writer.mjs"
+    "test:writer": "node scripts/test-writer.mjs",
+    "test:packs": "node scripts/test-packs.mjs"
   },
   "version": "0.1.0"
 }
