@@ -1,16 +1,28 @@
-# Architecture - Phase 1
-Date: 4 November 2026
-Status: Design only. No code is claimed as built from this document.
+# Architecture - Phase 1, updated Phase 2 increment 2
+Date: 4 November 2026, updated 4 November 2026 for split ready design
+Status: Design only, except for the schema, scaffold, template engine, and dashboard shell already built in Phase 2 increments 1 and 2. No feature beyond those increments is claimed as built from this document.
 Environment checked 4 November 2026: Node 24.22.1, npm 10.9.4, Python 3.12.3, no local Postgres. Use hosted Postgres, not a local Postgres assumption.
 
 ## Product and deployment shape
 
-One integrated application, Next.js, React, TypeScript, Tailwind CSS, PostgreSQL, Prisma ORM, Stripe, hosted Postgres, object storage for photos and exports, and background jobs for export and AI work that takes time.
+One combined application now, split later if needed, Next.js, React, TypeScript, Tailwind CSS, PostgreSQL, Prisma ORM, Stripe, hosted Postgres, object storage for photos and exports, and background jobs for export and AI work that takes time.
 
-Entry points, one application:
-- Direct on the tools site domain, to be decided in open decisions.
+Entry points, one application now:
+- Direct on the tools site, domain on hold as of 4 November 2026, so placeholder domain configuration only, no domain check, no purchase.
 - Linked from nvconsult.eu, tools section, menu, and relevant service pages, to the same application and same account.
-- No second copy of the builder. No separate NVConsult builder and Studio builder to keep in sync.
+- No second copy of the builder in version 1. No separate NVConsult builder and Studio builder to keep in sync.
+
+## Split ready design, decided 4 November 2026
+
+Combined now, split later if needed, supersedes a brief two separate versions choice made the same day. The rules below are mandatory, so a later split is a deployment and data partition task, not a rebuild:
+- Shared template and export engine: templates, rendering, PDF export, and DOCX export live in one package, used by both editions.
+- Separate skins and copy per edition: branding, header, landing copy, buttons, and help links are edition configuration, never hard coded into the engine.
+- Modular auth service: auth is a separate module with a clear interface, so a later split to separate logins, or to single sign on, is a configuration and migration task, not a rewrite of the builder, templates, or billing.
+- Edition tag on every user and document: each User row and each Document row carries an edition value (nvconsult or commercial) recording the entry edition. A user who uses both editions will have documents in both partitions, and that case must be resolved explicitly at split time, not silently assigned to one side.
+- Separate billing products per edition, even on the same Stripe account: plan and trial products are configured per edition, so they can be moved apart without changing prices for the other edition.
+- Separate entry points: nvconsult.eu is the NVConsult journey, the tools site is the commercial journey, even though both open the same application now.
+- Free tier presentation: same free tier for everyone, in both editions. NVConsult adds human help: free consultation and human CV review as the extra. There is no special NVConsult client Studio benefit at launch, and no second public price list.
+- What a split would require, in order: copy the app shell into two deployments, keep the shared engine, partition users and documents by the edition tag, move each billing product to its own setup, give each edition its own login if required, retest exports and billing in both deployments, and tell users which door they are now on, with redirects from old links. A split must not be started on the basis of this paragraph alone; it needs a separate decision, with a migration plan and a test database run first.
 
 Auth, initial decision:
 - Initially one shared login system for NVConsult and Global Career Studio.
@@ -32,7 +44,7 @@ Auth, initial decision:
 ## Frontend
 
 - Next.js App Router, React, TypeScript, Tailwind CSS.
-- Design system: Tokens for colours, fonts, spacing, and radii, components for dashboard, editor, preview, and checkout, with no hard coded copy in components where admin copy is required.
+- Design system: Tokens for colours, fonts, spacing, and radii, components for dashboard, editor, preview, and checkout, with no hard coded copy in components where admin copy is required. Phase 2 increment 2 implements the token set and a dashboard shell only, with an edition aware header selected by configuration. No real auth, billing, or document editing is claimed from the shell.
 - Editor: Live preview, section reorder, custom sections, rich text, font and colour choice, photo crop, margins and spacing, undo and redo, autosave with a visible saved state, and version history with restore.
 - Mobile: Editor must be usable on a phone. Drag and drop on desktop, plus move up, move down, and tap to edit on mobile. Preview and export must work on mobile browsers, tested at phone widths.
 - Accessibility: Keyboard navigation for section reorder, focus states, colour contrast, and readable text sizes. No text below a readable size to force a fit.
