@@ -44,6 +44,9 @@ export default function EditionHeader() {
           <a className="text-slate-700 underline" href="/subscription">
             Subscription
           </a>
+          <a className="text-slate-700 underline" href="/admin">
+            Admin, local only
+          </a>
           <a className="text-blue-700 underline" href={editionConfig.headerHelpHref}>
             {editionConfig.headerHelpLabel}
           </a>
