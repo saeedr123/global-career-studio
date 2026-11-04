@@ -4,6 +4,7 @@ import {
   renderDocx,
   renderPdf
 } from "@global-career-studio/template-engine";
+import { canExportDocument } from "../../../lib/billing-core.mjs";
 
 // Export API, Phase 2 increment 3.
 // Uses the real template engine, not a screenshot or a placeholder file.
@@ -42,6 +43,17 @@ export async function POST(request: Request) {
     }
     if (format !== "pdf" && format !== "docx") {
       return NextResponse.json({ error: "Format must be pdf or docx." }, { status: 400 });
+    }
+    if (typeof body?.subscriptionPlan === "string") {
+      const entitlement = canExportDocument({
+        planId: body.subscriptionPlan,
+        templateId: settings.templateId,
+        format,
+        existingDocument: Boolean(body.existingDocument)
+      });
+      if (!entitlement.allowed) {
+        return NextResponse.json({ error: entitlement.reason }, { status: 403 });
+      }
     }
     const engineProfile = {
       ...profile,
