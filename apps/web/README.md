@@ -1,6 +1,6 @@
-# Global Career Studio web app (builder, increment 3)
+# Global Career Studio web app (builder, increment 4)
 
-Status: Phase 2 increment 3 builder only. This is NOT a finished
+Status: Phase 2 increment 4 builder only. This is NOT a finished
 product. There are no accounts, payments, AI features, letters, ATS
 analysis, or country packs in this app, and no database is connected.
 Drafts are local browser drafts only, clearly labelled as a temporary
@@ -13,10 +13,16 @@ connected.
   Edit personal details, summary, experience, education, skills, and
   languages. Add jobs, education, and custom sections. Reorder sections
   with Move up and Move down buttons, which work on phones too. Switch
-  between ATS Minimal and Modern Professional only, choose A4 or US
-  Letter, and set the photo flag (honoured by Modern Professional only,
-  not by ATS Minimal by design). A live preview shows section order and
-  content, with the template styling difference.
+  between all 10 version 1 templates (ATS Minimal, Modern Professional,
+  Executive, Corporate, Elegant, European, US Resume, UK CV, Sidebar,
+  Two-column), each with a short honest description and an ATS note in
+  the builder. Sidebar and Two-column are labelled design first, not
+  ATS friendly, with ATS Minimal recommended for portal uploads.
+  Choose A4 or US Letter, and set the photo flag (honoured only where
+  the template allows it: not ATS Minimal, US Resume, or UK CV, by
+  design). A live preview shows section order and content, with the
+  template styling difference, including a two column preview for
+  Sidebar and Two-column.
 - Autosave and versions: drafts autosave to browser localStorage with a
   visible saved state, and saved versions can be restored from the
   version history list on the builder page. Versions are local only.
@@ -90,11 +96,13 @@ npm run typecheck
 npm run test:builder
 ```
 
-In increment 3, typecheck passed, the production build passed for both
-editions (routes `/`, `/builder` 6.05 kB, `/dashboard`, 87.4 kB first
-load JS on home and dashboard), the builder test passed 11 of 11, and
-the template engine test passed 10 of 10. The dashboard layout is one
-column on phones, two columns on tablets, and three columns on desktops.
+In increment 4, typecheck passed, the production build passed for both
+editions (routes `/`, `/builder` 6.81 kB, `/dashboard`, 87.4 kB first
+load JS on home and dashboard), the builder test passed 20 of 20, and
+the template engine test passed 64 of 64. A live export API test in
+increment 4 returned Sidebar PDF 200 at 1,791 bytes and European DOCX
+200 at 7,654 bytes. The dashboard layout is one column on phones, two
+columns on tablets, and three columns on desktops.
 
 ## Structure
 
