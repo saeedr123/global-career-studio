@@ -23,18 +23,25 @@ import {
   validateProfile
 } from "../../lib/builder-core.mjs";
 
-// CV builder, Phase 2 increment 4: all 10 version 1 templates.
-// Local draft only. No real sign in, no account, no payment, no AI, and
+// CV builder, Phase 2 increment 6: all 10 version 1 templates, with
+// a local account and master profile link.
+// Local draft only. No real server sign in, no payment, no AI, and
 // no database in this increment. Drafts live in browser localStorage
 // until Prisma validation passes and a real database is connected.
 // Starting data is fictional and marked SAMPLE. User edits are draft
-// edits, never presented as verified real history.
-// PDF and DOCX import is planned, not implemented here. The working
-// import path is guided paste import, with a correction step.
+// edits, never presented as verified real history. A document opened
+// from the dashboard is loaded here through gcs-open-document, and a
+// draft can be saved back to the master profile only after a
+// confirmation prompt, so editing a document never silently changes
+// the master profile.
+
+import { createEmptyProfile, saveDraftToProfile } from "../../lib/auth-core.mjs";
 
 const DRAFT_KEY = "gcs-builder-draft";
 const VERSIONS_KEY = "gcs-builder-versions";
 const JOB_VERSIONS_KEY = "gcs-builder-job-versions";
+const OPEN_KEY = "gcs-open-document";
+const PROFILE_KEY = "gcs-profile";
 const SAMPLE_IMPORT = [
   "Name: Imported Sample",
   "Headline: Sample Analyst",
@@ -74,12 +81,28 @@ export default function BuilderPage() {
 
   useEffect(() => {
     try {
-      const saved = window.localStorage.getItem(DRAFT_KEY);
-      if (saved) {
-        const draft = parseDraft(saved);
-        setProfile(draft.profile);
-        setSettings(draft.settings);
-        setSavedState(`Draft restored, saved ${draft.savedAt}`);
+      const opened = window.localStorage.getItem(OPEN_KEY);
+      if (opened) {
+        window.localStorage.removeItem(OPEN_KEY);
+        const document = JSON.parse(opened);
+        if (document && document.profile) {
+          setProfile(document.profile);
+          setSettings(document.settings || createDefaultSettings());
+          setSavedState(`Opened from dashboard: ${document.label || "document"}.`);
+          if (document.kind === "job" && document.id) {
+            setActiveJobVersionId(document.id);
+          } else {
+            setActiveJobVersionId("");
+          }
+        }
+      } else {
+        const saved = window.localStorage.getItem(DRAFT_KEY);
+        if (saved) {
+          const draft = parseDraft(saved);
+          setProfile(draft.profile);
+          setSettings(draft.settings);
+          setSavedState(`Draft restored, saved ${draft.savedAt}`);
+        }
       }
       const savedVersions = window.localStorage.getItem(VERSIONS_KEY);
       if (savedVersions) {
@@ -425,6 +448,30 @@ export default function BuilderPage() {
         >
           Reset to sample
         </button>
+        <button
+          type="button"
+          className="rounded border border-slate-300 px-4 py-2"
+          onClick={() => {
+            if (!window.confirm("Save this draft over the master profile? This replaces the profile fields with the draft fields.")) {
+              setMessage("Save back cancelled. The master profile was not changed.");
+              return;
+            }
+            try {
+              const saved = window.localStorage.getItem(PROFILE_KEY);
+              const current = saved ? JSON.parse(saved) : createEmptyProfile();
+              const next = saveDraftToProfile(current, profile, true);
+              window.localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
+              setMessage("Draft saved back to the master profile, after your confirmation.");
+            } catch {
+              setMessage("Save back failed. The master profile was not changed.");
+            }
+          }}
+        >
+          Save draft back to master profile, with confirmation
+        </button>
+        <a className="rounded border border-slate-300 px-4 py-2" href="/profile">
+          Edit master profile
+        </a>
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
