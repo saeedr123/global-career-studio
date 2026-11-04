@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens, Phase 2 increment 2. See lib/design-tokens.ts for the
+   matching token object. Change branding in the token files, not in
+   individual components, so an edition skin can change in one place. */
+:root {
+  --color-navy: #16294d;
+  --color-navy-dark: #0f1e3a;
+  --color-gold: #d9a441;
+  --color-gold-soft: #f5e9c8;
+  --color-ink: #1f2937;
+  --color-muted: #64748b;
+  --color-paper: #ffffff;
+  --color-background: #f8fafc;
+  --color-border: #e2e8f0;
+  --radius-card: 0.75rem;
+  --radius-button: 0.5rem;
+}
+
 body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: var(--color-background);
+  color: var(--color-ink);
 }
