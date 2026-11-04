@@ -1,13 +1,15 @@
-# Global Career Studio web app (builder, auth, dashboard, writer, letters, ATS, packs, increment 8)
+# Global Career Studio web app (builder, auth, dashboard, writer, letters, ATS, packs, billing config, increment 9)
 
-Status: Phase 2 increment 8. This is NOT a finished product. There
+Status: Phase 2 increment 9. This is NOT a finished product. There
 are no payments, no connected AI generation, and no database is
 connected. Accounts, profiles, and documents are local browser data
 only, clearly labelled as a temporary stand in until Prisma validation
 passes and a real database is connected. The writer, letters, ATS
-check, country packs, language packs, and onboarding wizard in this
-app are local features, not connected services. Country packs are
-guidance only, not legal advice.
+check, country packs, language packs, onboarding wizard, and billing
+config in this app are local features, not connected services.
+Billing config is configuration and local entitlement checks only.
+No checkout, payment form, or Stripe integration is working.
+Country packs are guidance only, not legal advice.
 
 ## What is in this increment
 
@@ -82,6 +84,36 @@ guidance only, not legal advice.
   not a real ATS, with no pass or fail result and no guaranteed
   outcome. The pasted job description is page state only, never
   saved and never sent.
+- Monetization config, entitlement enforcement, and subscription page in increment 9:
+  billing config at `lib/billing-core.mjs` for Free, Premium, and Trial as
+  configurable plan objects. Price, currency, and Stripe product ids are
+  null placeholders only, decided later by the owner, never invented
+  prices. Free allows 3 templates (ATS Minimal, Modern Professional,
+  European), 2 documents, basic AI, cover letters only, and PDF export
+  only. Premium and Trial allow all 10 templates, full letters, advanced
+  AI in config, and PDF and DOCX export. PNG is not listed, because no
+  PNG export route is built yet. Trial config is 7 days, no card, one
+  trial per account, all configurable in the same file. Downgrade
+  behaviour keeps viewing and downloading documents already created,
+  and locks premium editing, premium templates, and premium exports.
+  The builder, writer, and letters pages show the local plan and plain
+  locked explanations, and the builder and letter export routes enforce
+  the plan when a plan is supplied, returning 403 with a plain reason
+  for a locked template or format. A document opened from the
+  dashboard, or flagged as already created, stays viewable and
+  downloadable after downgrade. The subscription page at
+  `app/subscription/page.tsx` shows the current plan, trial status and
+  end date, entitlements, and downgrade behaviour in plain language,
+  with local only trial start, local cancel, and local move to Free
+  actions. Local cancel keeps trial access until the trial end date,
+  then moves to Free, and never charges or contacts a payment provider.
+  Billing, VAT, invoices, and the refund policy are stated as not final
+  on that page and will be published before launch. The subscription
+  page is linked from the dashboard and from the edition aware header,
+  which is unchanged except for the new link. Entitlements are local
+  browser state only, in `gcs-subscription`, until a real database and
+  Stripe are connected. The same free tier applies to everyone, in both
+  editions, with no second public price list.
 - Country packs, language packs, and onboarding wizard in increment 8:
   country packs at `lib/packs-core.mjs` for US, Canada, UK, Germany,
   Europe, Australia, New Zealand, and Global/Universal, each with
@@ -174,8 +206,27 @@ npm run test:builder
 npm run test:auth
 npm run test:writer
 npm run test:packs
+npm run test:billing
 ```
 
+In increment 9, typecheck passed after one real failure was fixed, not
+hidden: the new export routes first imported the billing core with a
+path that resolved inside `app/`, which TypeScript rejected, so the
+import path was corrected to the web app `lib/` folder. The production
+build passed for both editions (commercial routes `/`, `/builder`
+13.1 kB, `/dashboard` 5.38 kB, `/auth` 4.97 kB, `/profile` 3.54 kB,
+`/writer` 7.27 kB, `/letters` 7.52 kB, `/ats` 4.91 kB, `/onboarding`
+3.56 kB, `/subscription` 4.15 kB, plus `/api/export`, `/api/import`,
+`/api/letter-export`, and `/api/auth`; nvconsult routes `/dashboard`
+4.6 kB and `/auth` 4.16 kB, same other routes), the builder test
+passed 25 of 25, the import test passed 6 of 6, the auth test passed
+12 of 12, the writer test passed 15 of 15, the packs test passed 20
+of 20, the billing test passed 21 of 21, and the template engine test
+passed 64 of 64. A live server test returned 200 for the subscription
+page, 403 for a Free export of a premium template, 200 at 1,652 bytes
+for a Free PDF export of a free template, and 200 at 7,759 bytes for
+a Trial DOCX export of a premium template. The test server was
+stopped after the test.
 In increment 8, typecheck passed after one real failure was fixed, not
 hidden: the new builder code indexed a language pack section title map
 with a plain string, which TypeScript rejected, so the pack values are
@@ -230,9 +281,20 @@ and three columns on desktops.
   onboarding recommendation logic, tested with plain Node.
 - `scripts/test-packs.mjs`: country pack, language pack, pack
   application and override, and onboarding recommendation tests.
+- `lib/billing-core.mjs`: billing config and entitlement logic for
+  Free, Premium, and Trial, with trial, downgrade, cancel, and export
+  enforcement helpers, tested with plain Node.
+- `scripts/test-billing.mjs`: billing tests for free and trial
+  entitlements, trial start and expiry, one trial per account, local
+  cancel, downgrade view and download kept, and export enforcement,
+  plus one real engine PDF for an allowed free export.
+- `app/subscription/page.tsx`: subscription page, placeholder billing
+  only, with current plan, trial status, entitlements, downgrade
+  behaviour, and local only trial, cancel, and move to Free actions.
 - `app/builder/page.tsx`: working builder, local drafts only, with
   PDF/DOCX file import, job specific versions, a country pack and
-  language selector, and onboarding suggestion application.
+  language selector, onboarding suggestion application, and local
+  plan and entitlement gating for templates and exports.
 - `app/api/export/route.ts`: PDF and DOCX export through the real
   template engine.
 - `app/api/import/route.ts`: PDF and DOCX file import, text
