@@ -5,8 +5,10 @@ import {
   TEMPLATES,
   addCustomSection,
   buildPreviewSections,
+  compareJobVersions,
   createDefaultSettings,
   createDraft,
+  createJobVersion,
   createSampleProfile,
   moveSection,
   parseDraft,
@@ -32,6 +34,7 @@ import {
 
 const DRAFT_KEY = "gcs-builder-draft";
 const VERSIONS_KEY = "gcs-builder-versions";
+const JOB_VERSIONS_KEY = "gcs-builder-job-versions";
 const SAMPLE_IMPORT = [
   "Name: Imported Sample",
   "Headline: Sample Analyst",
@@ -55,6 +58,15 @@ export default function BuilderPage() {
   const [versions, setVersions] = useState<any[]>([]);
   const [importText, setImportText] = useState(SAMPLE_IMPORT);
   const [parsed, setParsed] = useState<any>(null);
+  const [fileParsed, setFileParsed] = useState<any>(null);
+  const [fileStatus, setFileStatus] = useState("");
+  const [jobVersions, setJobVersions] = useState<any[]>([]);
+  const [jobTitle, setJobTitle] = useState("");
+  const [jobCompany, setJobCompany] = useState("");
+  const [activeJobVersionId, setActiveJobVersionId] = useState("");
+  const [compareFirst, setCompareFirst] = useState("master");
+  const [compareSecond, setCompareSecond] = useState("");
+  const [compareResult, setCompareResult] = useState<any>(null);
   const [customTitle, setCustomTitle] = useState("");
   const [customText, setCustomText] = useState("");
   const [message, setMessage] = useState("");
@@ -72,6 +84,10 @@ export default function BuilderPage() {
       const savedVersions = window.localStorage.getItem(VERSIONS_KEY);
       if (savedVersions) {
         setVersions(JSON.parse(savedVersions));
+      }
+      const savedJobVersions = window.localStorage.getItem(JOB_VERSIONS_KEY);
+      if (savedJobVersions) {
+        setJobVersions(JSON.parse(savedJobVersions));
       }
     } catch {
       setSavedState("Local draft could not be restored, starting from sample.");
@@ -191,6 +207,134 @@ export default function BuilderPage() {
       return;
     }
     file.text().then((text) => setImportText(text));
+  }
+
+  async function handleFileImport(file: File | undefined) {
+    if (!file) {
+      return;
+    }
+    setFileStatus("Reading file, please wait...");
+    setFileParsed(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch("/api/import", { method: "POST", body: form });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "File import failed.");
+      }
+      setFileParsed(data);
+      setFileStatus(
+        data.empty
+          ? "No readable text was found in this file. It may be a scanned image. No content was invented."
+          : "File parsed. Check the fields below, correct them, then use this import."
+      );
+    } catch {
+      setFileStatus("File import failed. Your draft was not changed. Please check the file and try again.");
+    }
+  }
+
+  function useFileImport() {
+    if (!fileParsed) {
+      return;
+    }
+    setProfile(clone(fileParsed.profile));
+    setSettings((current: any) => ({
+      ...current,
+      sectionOrder: sectionOrderFor(fileParsed.profile, current.sectionOrder)
+    }));
+    setActiveJobVersionId("");
+    setFileParsed(null);
+    setMessage("File import applied as a draft. It is not a verified real CV until you check it.");
+  }
+
+  function createJobVersionFromMaster() {
+    try {
+      const version = createJobVersion({ profile, settings, label: "Master draft" }, jobTitle, jobCompany);
+      const next = [...jobVersions, version];
+      setJobVersions(next);
+      try {
+        window.localStorage.setItem(JOB_VERSIONS_KEY, JSON.stringify(next));
+      } catch {
+        setMessage("Job version could not be stored in this browser.");
+        return;
+      }
+      setCompareSecond(version.id);
+      setJobTitle("");
+      setJobCompany("");
+      setMessage(`Job version created: ${version.label}. Editing it does not change the master draft.`);
+    } catch {
+      setMessage("Job title and company are both required for a job version. They are never invented.");
+    }
+  }
+
+  function loadJobVersion(id: string) {
+    const version = jobVersions.find((item: any) => item.id === id);
+    if (!version) {
+      return;
+    }
+    setProfile(clone(version.profile));
+    setSettings(clone(version.settings));
+    setActiveJobVersionId(id);
+    setMessage(`Editing job version: ${version.label}. The master draft is unchanged until you save back.`);
+  }
+
+  function saveJobVersionBack() {
+    const version = jobVersions.find((item: any) => item.id === activeJobVersionId);
+    if (!version) {
+      return;
+    }
+    const next = jobVersions.map((item: any) =>
+      item.id === activeJobVersionId ? { ...item, profile: clone(profile), settings: clone(settings) } : item
+    );
+    setJobVersions(next);
+    try {
+      window.localStorage.setItem(JOB_VERSIONS_KEY, JSON.stringify(next));
+    } catch {
+      setMessage("Job version could not be stored in this browser.");
+      return;
+    }
+    setMessage(`Saved this edit back to job version: ${version.label}. Use the master draft separately if you want the master to change.`);
+  }
+
+  function saveVersionToMaster() {
+    setActiveJobVersionId("");
+    setMessage("Now editing the master draft. The job versions above are unchanged.");
+  }
+
+  async function exportJobVersion(version: any, format: "pdf" | "docx") {
+    setMessage(`Exporting job version ${format.toUpperCase()}...`);
+    try {
+      const response = await fetch("/api/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile: version.profile, settings: version.settings, format })
+      });
+      if (!response.ok) {
+        throw new Error("Export request failed.");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${version.settings.templateId}-${format}`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      setMessage(`Job version ${format.toUpperCase()} export downloaded.`);
+    } catch {
+      setMessage("Job version export failed. Your drafts were not changed. Please try again.");
+    }
+  }
+
+  function runCompare() {
+    const master = { label: "Master draft", profile, settings };
+    const first = compareFirst === "master" ? master : jobVersions.find((item: any) => item.id === compareFirst);
+    const second = compareSecond === "master" ? master : jobVersions.find((item: any) => item.id === compareSecond);
+    if (!first || !second) {
+      setMessage("Choose two versions to compare.");
+      return;
+    }
+    setCompareResult(compareJobVersions(first, second));
   }
 
   return (
@@ -385,9 +529,11 @@ export default function BuilderPage() {
           <section className="mt-4 rounded border border-slate-200 bg-white p-4">
             <h3 className="font-semibold">Import, guided paste with correction</h3>
             <p className="mt-1 text-sm text-slate-500">
-              PDF and DOCX import is planned, not implemented in this increment.
               The working path is pasted structured text, or a plain text file.
-              Nothing is imported until you check and correct it below.
+              PDF and DOCX file import is in the section below, also with a
+              correction step. LinkedIn import is planned, not built, and
+              guided paste is the working fallback. Nothing is imported
+              until you check and correct it below.
             </p>
             <textarea className="mt-3 w-full rounded border border-slate-300 p-2 font-mono text-sm" rows={10} value={importText} onChange={(e) => setImportText(e.target.value)} />
             <div className="mt-2 flex flex-wrap gap-2">
@@ -417,6 +563,130 @@ export default function BuilderPage() {
                   <button type="button" className="rounded bg-navy px-3 py-2 text-sm text-white" onClick={useImport}>Use this import as a draft</button>
                   <button type="button" className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => setParsed(null)}>Discard import</button>
                 </div>
+              </div>
+            )}
+          </section>
+
+          <section className="mt-4 rounded border border-slate-200 bg-white p-4">
+            <h3 className="font-semibold">Import PDF or DOCX, with correction</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Upload a PDF or DOCX file, up to 5 MB. Its text is parsed into
+              profile fields, and unparsed lines are shown, never silently
+              dropped. If the file has no readable text, for example a
+              scanned image, it is reported as empty and no content is
+              invented. Only after you check and correct the fields below
+              does the import become a draft.
+            </p>
+            <label className="mt-3 block rounded border border-slate-300 px-3 py-2 text-sm">Upload PDF or DOCX file
+              <input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="ml-2" onChange={(e) => handleFileImport(e.target.files?.[0])} />
+            </label>
+            {fileStatus && <p className="mt-2 text-sm">{fileStatus}</p>}
+            {fileParsed && !fileParsed.empty && (
+              <div className="mt-4 rounded border border-amber-300 bg-amber-50 p-3">
+                <p className="font-semibold">Check and correct this file import before use</p>
+                <p className="mt-1 text-sm">File: {fileParsed.fileName}, format: {fileParsed.format}{fileParsed.pageCount ? `, pages: ${fileParsed.pageCount}` : ""}</p>
+                {fileParsed.warnings.length > 0 && <p className="mt-1 text-sm">Notes: {fileParsed.warnings.join(" ")}</p>}
+                {fileParsed.unparsedLines.length > 0 && <p className="mt-1 text-sm">Unparsed lines, not imported: {fileParsed.unparsedLines.join(" | ")}</p>}
+                <label className="mt-3 block text-sm">Name
+                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={fileParsed.profile.fullName} onChange={(e) => setFileParsed({ ...fileParsed, profile: { ...fileParsed.profile, fullName: e.target.value } })} />
+                </label>
+                <label className="mt-2 block text-sm">Headline
+                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={fileParsed.profile.headline} onChange={(e) => setFileParsed({ ...fileParsed, profile: { ...fileParsed.profile, headline: e.target.value } })} />
+                </label>
+                <label className="mt-2 block text-sm">Summary
+                  <textarea className="mt-1 w-full rounded border border-slate-300 bg-white p-2" rows={3} value={fileParsed.profile.summary} onChange={(e) => setFileParsed({ ...fileParsed, profile: { ...fileParsed.profile, summary: e.target.value } })} />
+                </label>
+                <label className="mt-2 block text-sm">Skills, comma separated
+                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={fileParsed.profile.skills.join(", ")} onChange={(e) => setFileParsed({ ...fileParsed, profile: { ...fileParsed.profile, skills: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) } })} />
+                </label>
+                <div className="mt-3 flex gap-2">
+                  <button type="button" className="rounded bg-navy px-3 py-2 text-sm text-white" onClick={useFileImport}>Use this import as a draft</button>
+                  <button type="button" className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => setFileParsed(null)}>Discard import</button>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="mt-4 rounded border border-slate-200 bg-white p-4">
+            <h3 className="font-semibold">Job specific versions, local drafts only</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Create a named copy of the master draft for one job. Editing a
+              job version does not change the master draft, and editing the
+              master does not change a saved version, unless you save a
+              version back on purpose. Job title and company are typed by
+              you, never invented.
+            </p>
+            {activeJobVersionId && (
+              <p className="mt-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm">
+                Editing a job version now. Use Save back to job version to keep
+                this edit in that version, or Return to master draft to edit
+                the master instead.
+              </p>
+            )}
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="block text-sm">Job title
+                <input className="mt-1 w-full rounded border border-slate-300 p-2" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
+              </label>
+              <label className="block text-sm">Company
+                <input className="mt-1 w-full rounded border border-slate-300 p-2" value={jobCompany} onChange={(e) => setJobCompany(e.target.value)} />
+              </label>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" className="rounded bg-navy px-3 py-2 text-sm text-white" onClick={createJobVersionFromMaster}>Create job version from master draft</button>
+              {activeJobVersionId && (
+                <>
+                  <button type="button" className="rounded bg-gold px-3 py-2 text-sm font-semibold text-navy" onClick={saveJobVersionBack}>Save back to job version</button>
+                  <button type="button" className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={saveVersionToMaster}>Return to master draft</button>
+                </>
+              )}
+            </div>
+            {jobVersions.length === 0 && <p className="mt-3 text-sm text-slate-500">No job versions yet.</p>}
+            <ul className="mt-3 space-y-2">
+              {jobVersions.map((version: any) => (
+                <li key={version.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-100 px-3 py-2 text-sm">
+                  <span>{version.label}, created {version.createdAt}</span>
+                  <span className="flex flex-wrap gap-2">
+                    <button type="button" className="rounded border border-slate-300 px-2 py-1" onClick={() => loadJobVersion(version.id)}>Edit version</button>
+                    <button type="button" className="rounded border border-slate-300 px-2 py-1" onClick={() => exportJobVersion(version, "pdf")}>Export PDF</button>
+                    <button type="button" className="rounded border border-slate-300 px-2 py-1" onClick={() => exportJobVersion(version, "docx")}>Export DOCX</button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <h4 className="mt-4 font-semibold">Compare two versions, structure only</h4>
+            <p className="mt-1 text-sm text-slate-500">This compares template, paper size, photo, section order, and field counts. It does not claim a quality score.</p>
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="block text-sm">First
+                <select className="mt-1 w-full rounded border border-slate-300 p-2" value={compareFirst} onChange={(e) => setCompareFirst(e.target.value)}>
+                  <option value="master">Master draft</option>
+                  {jobVersions.map((version: any) => (
+                    <option key={version.id} value={version.id}>{version.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm">Second
+                <select className="mt-1 w-full rounded border border-slate-300 p-2" value={compareSecond} onChange={(e) => setCompareSecond(e.target.value)}>
+                  <option value="">Choose a version</option>
+                  <option value="master">Master draft</option>
+                  {jobVersions.map((version: any) => (
+                    <option key={version.id} value={version.id}>{version.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <button type="button" className="mt-2 rounded bg-navy px-3 py-2 text-sm text-white" onClick={runCompare}>Compare versions</button>
+            {compareResult && (
+              <div className="mt-3 rounded border border-slate-200 p-3 text-sm">
+                <p className="font-semibold">{compareResult.firstLabel} compared with {compareResult.secondLabel}</p>
+                {compareResult.same ? (
+                  <p className="mt-1">No structural differences were found.</p>
+                ) : (
+                  <ul className="mt-1 list-disc pl-5">
+                    {compareResult.differences.map((difference: string, index: number) => (
+                      <li key={index}>{difference}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </section>
