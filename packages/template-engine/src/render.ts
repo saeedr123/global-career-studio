@@ -8,7 +8,7 @@ import type {
 import { getTemplate } from "./templates";
 
 function buildSections(profile: CandidateProfile): Record<string, RenderSection> {
-  return {
+  const sections: Record<string, RenderSection> = {
     summary: {
       key: "summary",
       title: "Summary",
@@ -45,6 +45,17 @@ function buildSections(profile: CandidateProfile): Record<string, RenderSection>
       bullets: []
     }
   };
+  for (const custom of profile.customSections || []) {
+    if (custom.key && !sections[custom.key]) {
+      sections[custom.key] = {
+        key: custom.key,
+        title: custom.title,
+        lines: custom.lines,
+        bullets: []
+      };
+    }
+  }
+  return sections;
 }
 
 // Apply a custom section order. Requested keys come first, in requested
@@ -79,7 +90,9 @@ export function renderDocument(
 ): RenderedDocument {
   const template = getTemplate(templateId);
   const all = buildSections(profile);
-  const keys = orderSections(template.defaultSectionOrder, options.sectionOrder);
+  const customKeys = (profile.customSections || []).map((item) => item.key);
+  const effectiveOrder = [...template.defaultSectionOrder, ...customKeys];
+  const keys = orderSections(effectiveOrder, options.sectionOrder);
   const sections = keys.map((key) => all[key]);
   return {
     template,
