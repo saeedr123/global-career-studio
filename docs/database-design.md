@@ -1,13 +1,17 @@
-# Database Design - Phase 1
-Date: 4 November 2026
-Status: Design only. No schema is claimed as implemented until Prisma migrations exist and pass.
+# Database Design - Phase 1, updated Phase 2 increment 2
+Date: 4 November 2026, updated 4 November 2026 for split ready design
+Status: Schema implemented in prisma/schema.prisma in Phase 2 increments 1 and 2. No migration is claimed as run until Prisma validation and a test migration pass, see PROJECT_STATUS.md for the current attempt result.
 Stack: PostgreSQL, Prisma ORM. All ids are UUIDs unless stated. All timestamps are UTC. All user content fields are nullable where the user may not have that data yet, to avoid forcing invented values.
+
+## Edition tag, split ready design, Phase 2 increment 2
+
+Combined now, split later if needed. Every User row and every Document row carries an edition value, with allowed values nvconsult and commercial, and a default of commercial for rows created without an explicit entry edition. The edition value records the entry edition, it is not a hard restriction on which edition a user may use later. A user who uses both editions will have documents in both partitions, and that case must be resolved explicitly at split time, not silently assigned to one side. Billing products are configured per edition, even on the same Stripe account, so they can be moved apart later. A later split partitions users and documents by this edition value, after a separate decision and a test migration.
 
 ## Core tables
 
 User
-- id, email unique, name, passwordHash, role (user, admin), createdAt, updatedAt, deletedAt (soft delete, with a hard delete job on request)
-- Indexes: email
+- id, email unique, name, passwordHash, role (user, admin), edition (nvconsult or commercial, default commercial, entry edition at signup), createdAt, updatedAt, deletedAt (soft delete, with a hard delete job on request)
+- Indexes: email, edition
 
 Profile
 - id, userId unique, headline, summary, phone, city, country, website, linkedinUrl, photoStorageKey, photoCrop, createdAt, updatedAt
@@ -28,7 +32,7 @@ ProfileSkill, ProfileProject, ProfileCertification, ProfileLanguage
 ## Documents
 
 Document
-- id, userId, profileId, title, documentType (cv, coverLetter, motivationLetter, otherLetter, linkedinAbout, bio, personalStatement), templateId, countryPackId, language, paperSize (A4, US Letter), pageCountTarget (1, 2), status (draft, ready, archived), createdAt, updatedAt
+- id, userId, profileId, title, documentType (cv, coverLetter, motivationLetter, otherLetter, linkedinAbout, bio, personalStatement), templateId, countryPackId, language, paperSize (A4, US Letter), pageCountTarget (1, 2), status (draft, ready, archived), edition (nvconsult or commercial, default commercial, entry edition for this document), createdAt, updatedAt
 - A document stores a snapshot reference to the profile version at creation, plus document specific edits in DocumentSection, so editing a document does not silently change the master profile.
 
 DocumentSection
