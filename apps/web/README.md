@@ -1,20 +1,93 @@
-# Global Career Studio web app (builder, auth, dashboard, writer, letters, ATS, packs, billing config, admin local only, increment 10)
+# Global Career Studio web app (builder, auth, dashboard, writer, letters, ATS, packs, billing config, admin local only, AI provider ready not live, increment 11)
 
-Status: Phase 2 increment 10, the final code increment in this
-overnight run. This is NOT a finished product and NOT launch ready.
-There are no payments, no connected AI generation, and no database
-is connected. Accounts, profiles, and documents are local browser
-data only, clearly labelled as a temporary stand in until Prisma
-validation passes and a real database is connected. The writer,
-letters, ATS check, country packs, language packs, onboarding
-wizard, billing config, and admin page in this app are local
-features, not connected services. Billing config is configuration
-and local entitlement checks only. No checkout, payment form, or
-Stripe integration is working. The admin page is local only, not a
+Status: Phase 2 increment 11. This is NOT a finished product and
+NOT launch ready. There are no payments, no live connected AI, and
+no database is connected. Accounts, profiles, and documents are
+local browser data only, clearly labelled as a temporary stand in
+until Prisma validation passes and a real database is connected.
+The writer, letters, ATS check, country packs, language packs,
+onboarding wizard, billing config, and admin page in this app are
+local features, not connected services. Billing config is
+configuration and local entitlement checks only. No checkout,
+payment form, or Stripe integration is working, and Stripe is on
+hold per owner decision. The admin page is local only, not a
 secured production admin. Country packs are guidance only, not
-legal advice.
+legal advice. Selected AI provider: Muse AI. Connected Muse AI is
+ready for a key and is NOT live until the owner adds a key and
+sets a budget cap. No budget cap has been set yet.
 
 ## What is in this increment
+
+- AI provider abstraction, increment 11, provider finalized, live
+  call not faked: provider logic in `lib/ai-provider-core.mjs`,
+  with Muse AI as the selected provider, configured only through
+  environment variables (provider name through GCS_AI_PROVIDER,
+  model name through GCS_AI_MODEL, key through GCS_AI_API_KEY,
+  budget cap through GCS_AI_BUDGET_CAP, variable names only, no
+  value in the repo, in a test, or in a log). The status route at
+  `app/api/ai-status/route.ts` returns provider, model configured,
+  key configured, budget cap set, and live status only, never a
+  key. The writer page at `app/writer/page.tsx` shows which
+  provider is selected, shows local fallback when no key or no
+  budget cap is configured, and falls back to the existing local
+  rule based writer, with all guardrails unchanged: never invent
+  qualifications, employers, job titles, dates, certifications,
+  or achievements, missing fields are prompts, and a suggestion
+  is applied only after user confirmation. No user CV text is
+  sent anywhere when no key is configured. Connected Muse AI is
+  NOT live until the owner adds a key and sets a budget cap, and
+  that status is stated plainly in code, in this README, and in
+  PROJECT_STATUS.md. AI provider tests at
+  `scripts/test-ai-provider.mjs` cover provider selection,
+  fallback with no key, fallback with a key but no budget cap,
+  live only with both, guardrails unchanged, and no key leakage
+  into output or logs.
+- Legal docs completed in the repo, not published live, increment
+  11, in `docs/legal/` at the project root: privacy policy, terms
+  of service, refund policy, and trial and billing disclosure,
+  plus a single owner to confirm list at
+  `docs/legal/owner-to-confirm.md`. Each doc states plainly that
+  Stripe payments are on hold, no payments are taken yet, prices
+  are not set, and the refund policy takes effect only when paid
+  plans are enabled. Refund window, human review turnaround, and
+  human review price are explicit owner to confirm placeholders,
+  never invented. Each doc notes at the top that it is finalized
+  for owner review and a legal check is still recommended before
+  it goes live on nvconsult.eu. Nothing in this increment was
+  published to any live site.
+- Human review scope, increment 11, in
+  `docs/human-review-scope.md` at the project root: what human
+  review covers (CV structure, wording, ATS readability, country
+  pack fit, letter review), what it does not cover (no guaranteed
+  job outcome, no invented history, no legal or visa advice), how
+  it is requested (through the NVConsult free consultation route,
+  paid support by personal invitation after the free call), and
+  that free resume review and free LinkedIn review remain free
+  extras. Turnaround and paid price are explicit owner to confirm
+  placeholders.
+- LinkedIn import decision, increment 11, in
+  `docs/linkedin-import-decision.md` at the project root: no
+  LinkedIn API import is built, because no permitted API path has
+  been tested, and guided paste import and PDF/DOCX import remain
+  the working fallbacks. No scraping, no unofficial API, and no
+  claim that LinkedIn import works.
+- Hosting plan for the nvconsult.eu first launch, increment 11,
+  in `docs/deployment-preparation.md` section 10 at the project
+  root: production build, environment variables by name only
+  (including the Muse AI key variable name only, no key value),
+  database, object storage, and the route options for hosting
+  the Next.js app alongside WordPress nvconsult.eu (subdomain,
+  path with reverse proxy, or separate hosting with links only),
+  with no provider chosen and no deployment executed. Do not
+  deploy anything and do not buy anything under this plan.
+- Prisma retry, increment 11: validate retried once, failed again
+  with the same ECONNRESET engine download error, recorded exactly
+  in `prisma/README.md` and in `docs/deployment-preparation.md`
+  section 1. Provider was NOT changed to SQLite, no migration was
+  run, and all accounts, drafts, and admin state stay local
+  browser data only, clearly labelled.
+- Admin dashboard, local only, in increment 10, at
+  `app/admin/page.tsx`, with logic in `lib/admin-core.mjs`. It
 
 - Admin dashboard, local only, in increment 10, at
   `app/admin/page.tsx`, with logic in `lib/admin-core.mjs`. It
@@ -260,9 +333,25 @@ npm run test:writer
 npm run test:packs
 npm run test:billing
 npm run test:admin
+npm run test:ai
 npm run test:e2e
 ```
 
+In increment 11, typecheck passed with no failure, the single test
+runner passed 202 of 202 across 10 suites (template engine 64 of 64,
+builder 25 of 25, import 6 of 6, auth 12 of 12, writer 15 of 15,
+packs 20 of 20, billing 21 of 21, admin 19 of 19, ai provider 9 of 9,
+end to end smoke 11 of 11), and the production build passed for both
+editions (commercial routes `/`, `/admin` 3.24 kB, `/builder`
+13.1 kB, `/dashboard` 5.38 kB, `/auth` 4.97 kB, `/profile` 3.54 kB,
+`/writer` 7.5 kB, `/letters` 7.52 kB, `/ats` 4.91 kB, `/onboarding`
+3.56 kB, `/subscription` 4.15 kB, plus `/api/ai-status`,
+`/api/export`, `/api/import`, `/api/letter-export`, and `/api/auth`;
+nvconsult routes `/admin` 3.24 kB, `/dashboard` 4.6 kB and `/auth`
+4.16 kB, same other routes). A live server test returned the
+ai-status JSON with provider Muse AI, mode local-fallback, live
+false, and writer page 200. The test server was stopped after the
+test.
 In increment 10, typecheck passed with no failure, the single test
 runner passed 193 of 193 across 9 suites (template engine 64 of 64,
 builder 25 of 25, import 6 of 6, auth 12 of 12, writer 15 of 15,
@@ -369,6 +458,13 @@ and three columns on desktops.
   with per suite pass and fail counts, exiting non zero on failure.
 - `scripts/test-admin.mjs`: admin tests for counts, versioning,
   flags, and audit entries.
+- `lib/ai-provider-core.mjs`: Muse AI provider abstraction, env
+  only config, safe status, local fallback, and secret redaction,
+  tested with plain Node, no live call, no key in output or logs.
+- `scripts/test-ai-provider.mjs`: AI provider tests for selection,
+  fallback, live gate, guardrails, and no key leakage.
+- `app/api/ai-status/route.ts`: safe AI status route, provider and
+  live status only, never a key.
 - `scripts/test-e2e-smoke.mjs`: end to end smoke test for one local
   visitor flow, reusing the existing core modules and the real
   template engine for export.
