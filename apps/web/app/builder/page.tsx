@@ -36,6 +36,14 @@ import {
 // the master profile.
 
 import { createEmptyProfile, saveDraftToProfile } from "../../lib/auth-core.mjs";
+import {
+  COUNTRY_PACKS,
+  LANGUAGE_PACKS,
+  applyCountryPack,
+  countryPackById,
+  languagePackById,
+  sectionTitleForLanguage
+} from "../../lib/packs-core.mjs";
 
 const DRAFT_KEY = "gcs-builder-draft";
 const VERSIONS_KEY = "gcs-builder-versions";
@@ -76,10 +84,26 @@ export default function BuilderPage() {
   const [compareResult, setCompareResult] = useState<any>(null);
   const [customTitle, setCustomTitle] = useState("");
   const [customText, setCustomText] = useState("");
+  const [countryPackId, setCountryPackId] = useState("global");
+  const [languageId, setLanguageId] = useState("en");
   const [message, setMessage] = useState("");
   const timer = useRef<any>(null);
 
   useEffect(() => {
+    try {
+      const onboarding = window.localStorage.getItem("gcs-onboarding-choice");
+      if (onboarding) {
+        window.localStorage.removeItem("gcs-onboarding-choice");
+        const choice = JSON.parse(onboarding);
+        if (choice && choice.countryPackId) {
+          setCountryPackId(choice.countryPackId);
+          setSettings((current: any) => applyCountryPack(current, choice.countryPackId, TEMPLATES));
+          setMessage("Onboarding suggestion applied. You can change the template, paper size, and section order below.");
+        }
+      }
+    } catch {
+      // An unreadable onboarding choice is ignored, the draft is unchanged.
+    }
     try {
       const opened = window.localStorage.getItem(OPEN_KEY);
       if (opened) {
@@ -140,6 +164,14 @@ export default function BuilderPage() {
 
   const order = sectionOrderFor(profile, settings.sectionOrder);
   const preview = buildPreviewSections(profile, settings.sectionOrder);
+  const languagePack: any = languagePackById(languageId);
+  const selectedCountryPack: any = countryPackById(countryPackId);
+  const displayTitle = (key: string, fallback: string) =>
+    languagePack.sectionTitles[key] ? sectionTitleForLanguage(languageId, key, fallback) : fallback;
+  const previewDisplay = preview.map((section: any) => ({
+    ...section,
+    title: displayTitle(section.key, section.title)
+  }));
   const missing = validateProfile(profile);
   const selectedTemplate = templateById(settings.templateId);
   const isBand = ["modern-professional", "corporate", "sidebar"].includes(settings.templateId);
@@ -430,6 +462,58 @@ export default function BuilderPage() {
         </div>
       </section>
 
+      <section className="mt-6 rounded border border-slate-200 bg-white p-4">
+        <h2 className="font-semibold">Country pack and language, guidance only</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Country packs are guidance only, not legal advice. No fee, deadline,
+          visa rule, or legal requirement is stated in a pack. Applying a pack
+          sets the template, paper size, and section order, and you can change
+          every setting afterwards. Language packs translate interface labels
+          and preview section headings only. They are not professionally
+          verified, and your CV content is never auto translated.
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <label className="block text-sm">Country pack
+            <select
+              className="mt-1 w-full rounded border border-slate-300 p-2"
+              value={countryPackId}
+              onChange={(event) => setCountryPackId(event.target.value)}
+            >
+              {COUNTRY_PACKS.map((pack: any) => (
+                <option key={pack.id} value={pack.id}>{pack.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm">Language
+            <select
+              className="mt-1 w-full rounded border border-slate-300 p-2"
+              value={languageId}
+              onChange={(event) => setLanguageId(event.target.value)}
+            >
+              {LANGUAGE_PACKS.map((pack: any) => (
+                <option key={pack.id} value={pack.id}>{pack.name}</option>
+              ))}
+            </select>
+          </label>
+          <div>
+            <button
+              type="button"
+              className="mt-6 rounded bg-navy px-3 py-2 text-sm text-white"
+              onClick={() => {
+                setSettings(applyCountryPack(settings, countryPackId, TEMPLATES));
+                setMessage(`Country pack applied: ${selectedCountryPack.name}. You can change the template, paper size, and section order below.`);
+              }}
+            >
+              Apply country pack
+            </button>
+          </div>
+        </div>
+        <p className="mt-3 text-sm text-slate-700">Pack: {selectedCountryPack.name}. Recommended templates: {selectedCountryPack.recommendedTemplates.join(", ")}. Photo: {selectedCountryPack.photoGuidance}</p>
+        <p className="mt-1 text-sm text-slate-500">Source: {selectedCountryPack.sourceNote} Last reviewed in this project: {selectedCountryPack.lastVerified}. {selectedCountryPack.legalNote}</p>
+        <p className="mt-1 text-sm text-slate-500">Language: {languagePack.name}. {languagePack.translationNote} Chinese (Simplified) is not in this version. It stays behind its demand gate.</p>
+        <a className="mt-3 inline-block text-sm text-blue-700 underline" href="/onboarding">Open the onboarding wizard</a>
+      </section>
+
       <div className="mt-6 flex flex-wrap gap-3">
         <button type="button" className="rounded bg-gold px-4 py-2 font-semibold text-navy" onClick={() => exportFile("pdf")}>
           Export PDF
@@ -543,7 +627,7 @@ export default function BuilderPage() {
             <ul className="mt-3 space-y-2">
               {order.map((key: string) => (
                 <li key={key} className="flex items-center justify-between rounded border border-slate-100 px-3 py-2">
-                  <span>{sectionTitle(profile, key)}</span>
+                  <span>{displayTitle(key, sectionTitle(profile, key))}</span>
                   <span className="flex gap-2">
                     <button type="button" className="rounded border border-slate-300 px-2 py-1 text-sm" onClick={() => setSettings({ ...settings, sectionOrder: moveSection(order, key, "up") })}>Move up</button>
                     <button type="button" className="rounded border border-slate-300 px-2 py-1 text-sm" onClick={() => setSettings({ ...settings, sectionOrder: moveSection(order, key, "down") })}>Move down</button>
@@ -773,7 +857,7 @@ export default function BuilderPage() {
             {isTwoColumnPreview ? (
               <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-3">
                 <div className={settings.templateId === "sidebar" ? "sm:order-1" : "sm:order-2"}>
-                  {preview.filter((section: any) => ["skills", "languages"].includes(section.key)).map((section: any) => (
+                  {previewDisplay.filter((section: any) => ["skills", "languages"].includes(section.key)).map((section: any) => (
                     <section key={section.key} className="mt-5">
                       <h4 className="font-bold uppercase text-navy">{section.title}</h4>
                       {section.lines.map((line: string, index: number) => (
@@ -783,7 +867,7 @@ export default function BuilderPage() {
                   ))}
                 </div>
                 <div className={settings.templateId === "sidebar" ? "sm:order-2 sm:col-span-2" : "sm:order-1 sm:col-span-2"}>
-                  {preview.filter((section: any) => !["skills", "languages"].includes(section.key)).map((section: any) => (
+                  {previewDisplay.filter((section: any) => !["skills", "languages"].includes(section.key)).map((section: any) => (
                     <section key={section.key} className="mt-5">
                       <h4 className="font-bold text-navy">{section.title}</h4>
                       {section.lines.map((line: string, index: number) => (
@@ -801,7 +885,7 @@ export default function BuilderPage() {
                 </div>
               </div>
             ) : (
-              preview.map((section: any) => (
+              previewDisplay.map((section: any) => (
                 <section key={section.key} className="mt-5">
                   <h4 className={`font-bold ${isBand ? "text-navy" : isCentered ? "text-center" : "uppercase"}`}>{section.title}</h4>
                   {isBand && <hr className="mt-1 border-t-2 border-gold" />}
