@@ -1,0 +1,23 @@
+{
+  "dependencies": {
+    "adm-zip": "0.5.15",
+    "docx": "9.1.1",
+    "pdfjs-dist": "3.11.174",
+    "pdfkit": "0.17.1"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "0.5.5",
+    "@types/node": "20.14.12",
+    "@types/pdfkit": "0.17.1",
+    "typescript": "5.5.4"
+  },
+  "main": "dist/index.js",
+  "name": "@global-career-studio/template-engine",
+  "private": true,
+  "scripts": {
+    "build": "node node_modules/typescript/bin/tsc",
+    "test": "npm run build && node dist/test/run-exports-test.js"
+  },
+  "types": "dist/index.d.ts",
+  "version": "0.1.0"
+}
