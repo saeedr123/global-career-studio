@@ -60,13 +60,15 @@ export const editionConfig: EditionConfig = editionConfigs[edition];
 export const siteConfig = {
   name: editionConfig.brandName,
   tagline: editionConfig.tagline,
-  status: "Dashboard shell only, Phase 2 increment 2. Not a finished product.",
+  status: "Local auth and dashboard, Phase 2 increment 6. Not a finished product, and no database is connected yet.",
   edition: editionConfig.edition,
   features: {
     accountsEnabled: false,
+    accountsLocalOnlyEnabled: true,
     paymentsEnabled: false,
     aiEnabled: false,
     templateProofEnabled: true,
-    dashboardShellEnabled: true
+    dashboardShellEnabled: true,
+    dashboardWorkingLocalEnabled: true
   }
 };
