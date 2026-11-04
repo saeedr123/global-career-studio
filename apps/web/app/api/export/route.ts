@@ -14,8 +14,21 @@ import {
 
 export const runtime = "nodejs";
 
-function isTemplate(value: unknown): value is "ats-minimal" | "modern-professional" {
-  return value === "ats-minimal" || value === "modern-professional";
+const TEMPLATE_IDS = [
+  "ats-minimal",
+  "modern-professional",
+  "executive",
+  "corporate",
+  "elegant",
+  "european",
+  "us-resume",
+  "uk-cv",
+  "sidebar",
+  "two-column"
+] as const;
+type TemplateId = (typeof TEMPLATE_IDS)[number];
+function isTemplate(value: unknown): value is TemplateId {
+  return typeof value === "string" && (TEMPLATE_IDS as readonly string[]).includes(value);
 }
 
 export async function POST(request: Request) {
