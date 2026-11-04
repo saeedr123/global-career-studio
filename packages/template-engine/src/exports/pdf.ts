@@ -1,8 +1,86 @@
 import PDFDocument from "pdfkit";
-import type { RenderedDocument } from "../types";
+import type { RenderedDocument, RenderSection } from "../types";
 
 // PDF export with selectable text. No page is rendered as an image.
 // Text is written with PDFKit text calls, so extraction tools can read it.
+// For sidebar and two-column templates, the visual layout is two
+// columns, but the text extraction order follows the drawing order.
+// That is why those two templates are labelled design first in the
+// builder, never ATS friendly, with ATS Minimal recommended for
+// portal uploads.
+
+type PdfDoc = InstanceType<typeof PDFDocument>;
+
+function fontName(doc: RenderedDocument, bold: boolean): string {
+  if (doc.template.font === "Times") {
+    return bold ? "Times-Bold" : "Times-Roman";
+  }
+  return bold ? "Helvetica-Bold" : "Helvetica";
+}
+
+function drawPhotoBox(
+  pdf: PdfDoc,
+  margin: number,
+  width: number
+): void {
+  pdf.rect(margin, pdf.y, 80, 100).stroke();
+  pdf.font("Helvetica").fontSize(9);
+  pdf.text("SAMPLE PHOTO", margin + 6, pdf.y + 42, { width: 68 });
+  pdf.y += 112;
+}
+
+function drawSection(
+  pdf: PdfDoc,
+  doc: RenderedDocument,
+  section: RenderSection,
+  width: number,
+  accentLine: boolean
+): void {
+  const accent = `#${doc.template.accentColor}`;
+  const title = doc.template.headingUppercase
+    ? section.title.toUpperCase()
+    : section.title;
+  pdf.font(fontName(doc, true)).fontSize(doc.template.headingSize).fillColor(accent);
+  pdf.text(title, { width });
+  if (accentLine) {
+    const lineY = pdf.y + 2;
+    pdf.strokeColor(accent).lineWidth(1.5);
+    pdf.moveTo(pdf.x, lineY).lineTo(pdf.x + 48, lineY).stroke();
+    pdf.strokeColor("#000000").fillColor("#000000");
+    pdf.moveDown(0.6);
+  } else {
+    pdf.fillColor("#000000");
+  }
+  pdf.font(fontName(doc, false)).fontSize(doc.template.bodySize);
+  for (const line of section.lines) {
+    pdf.text(line, { width });
+  }
+  for (const group of section.bullets) {
+    group.forEach((line, index) => {
+      if (index === 0) {
+        pdf.font(fontName(doc, true)).text(line, { width });
+        pdf.font(fontName(doc, false));
+      } else {
+        pdf.text(`- ${line}`, { width });
+      }
+    });
+    pdf.moveDown(0.4);
+  }
+  pdf.moveDown(0.6);
+}
+
+function drawFlowSections(
+  pdf: PdfDoc,
+  doc: RenderedDocument,
+  sections: RenderSection[],
+  width: number,
+  accentLine: boolean
+): void {
+  for (const section of sections) {
+    drawSection(pdf, doc, section, width, accentLine);
+  }
+}
+
 export function renderPdf(doc: RenderedDocument): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const isLetter = doc.options.paperSize === "US_LETTER";
@@ -17,87 +95,110 @@ export function renderPdf(doc: RenderedDocument): Promise<Buffer> {
     const margin = 48;
     const textWidth = pageWidth - margin * 2;
     const navy = "#16294d";
-    const gold = "#d9a441";
+    const accent = `#${doc.template.accentColor}`;
+    const template = doc.template;
+    const contactLine = `SAMPLE: ${doc.profile.email} | ${doc.profile.phone} | ${doc.profile.city}`;
 
-    if (doc.template.id === "modern-professional") {
-      // Navy header block. Text stays selectable, it is not an image.
+    // Header, per template style.
+    if (template.headerStyle === "band") {
       pdf.rect(0, 0, pageWidth, 96).fill(navy);
-      pdf.fillColor("#ffffff").font("Helvetica-Bold").fontSize(22);
+      pdf.fillColor("#ffffff").font(fontName(doc, true)).fontSize(template.nameSize);
       pdf.text(doc.profile.fullName, margin, 18, { width: textWidth });
-      pdf.font("Helvetica").fontSize(12);
+      pdf.font(fontName(doc, false)).fontSize(12);
       pdf.text(doc.profile.headline, margin, 48, { width: textWidth });
       pdf.fillColor("#000000");
       pdf.y = 112;
-      if (doc.photoIncluded) {
-        pdf.rect(margin, pdf.y, 80, 100).stroke();
-        pdf.font("Helvetica").fontSize(9);
-        pdf.text("SAMPLE PHOTO", margin + 6, pdf.y + 42, { width: 68 });
-        pdf.y += 112;
-      }
-      pdf.font("Helvetica").fontSize(10);
-      pdf.text(
-        `SAMPLE: ${doc.profile.email} | ${doc.profile.phone} | ${doc.profile.city}`,
-        margin,
-        pdf.y,
-        { width: textWidth }
-      );
+    } else if (template.headerStyle === "centered") {
+      pdf.font(fontName(doc, true)).fontSize(template.nameSize);
+      pdf.text(doc.profile.fullName, { width: textWidth, align: "center" });
+      pdf.font(fontName(doc, false)).fontSize(12);
+      pdf.text(doc.profile.headline, { width: textWidth, align: "center" });
+      pdf.font(fontName(doc, false)).fontSize(10);
+      pdf.text(contactLine, { width: textWidth, align: "center" });
+      const ruleY = pdf.y + 4;
+      pdf.strokeColor(accent).lineWidth(1);
+      pdf.moveTo(margin, ruleY).lineTo(pageWidth - margin, ruleY).stroke();
+      pdf.strokeColor("#000000");
       pdf.moveDown(1);
-      for (const section of doc.sections) {
-        pdf.font("Helvetica-Bold").fontSize(13).fillColor(navy);
-        pdf.text(section.title, margin, pdf.y, { width: textWidth });
-        const lineY = pdf.y + 2;
-        pdf.strokeColor(gold).lineWidth(1.5);
-        pdf.moveTo(margin, lineY).lineTo(margin + 48, lineY).stroke();
-        pdf.strokeColor("#000000").fillColor("#000000");
-        pdf.moveDown(0.6);
-        pdf.font("Helvetica").fontSize(11);
-        for (const line of section.lines) {
-          pdf.text(line, { width: textWidth });
+    } else if (template.headerStyle === "european") {
+      pdf.font(fontName(doc, true)).fontSize(template.nameSize);
+      pdf.text(doc.profile.fullName, { width: textWidth });
+      pdf.font(fontName(doc, false)).fontSize(template.bodySize);
+      pdf.text("Personal Information", { width: textWidth });
+      pdf.text(`Email: ${doc.profile.email}`, { width: textWidth });
+      pdf.text(`Phone: ${doc.profile.phone}`, { width: textWidth });
+      pdf.text(`City: ${doc.profile.city}`, { width: textWidth });
+      pdf.moveDown(1);
+    } else {
+      // Plain header, ATS Minimal, US Resume, UK CV, Two-column.
+      pdf.font(fontName(doc, true)).fontSize(template.nameSize);
+      pdf.text(doc.profile.fullName, { width: textWidth });
+      pdf.font(fontName(doc, false)).fontSize(template.bodySize);
+      pdf.text(doc.profile.headline, { width: textWidth });
+      pdf.text(contactLine, { width: textWidth });
+      pdf.moveDown(1);
+    }
+
+    // For band and plain headers, the contact line is not yet drawn
+    // for band headers, and the photo box goes after the contact line.
+    if (template.headerStyle === "band") {
+      pdf.font(fontName(doc, false)).fontSize(10);
+      pdf.text(contactLine, { width: textWidth });
+      pdf.moveDown(1);
+    }
+    if (doc.photoIncluded) {
+      drawPhotoBox(pdf, margin, textWidth);
+    }
+
+    const accentLine =
+      template.id === "modern-professional" ||
+      template.id === "corporate" ||
+      template.id === "sidebar";
+
+    if (template.layoutKind === "sidebar" || template.layoutKind === "two-column") {
+      // Split sections: skills and languages go in the narrow column,
+      // everything else goes in the main column, in template order.
+      const sideKeys = new Set(["skills", "languages"]);
+      const sideSections = doc.sections.filter((s) => sideKeys.has(s.key));
+      const mainSections = doc.sections.filter((s) => !sideKeys.has(s.key));
+      const gap = 16;
+      const sideWidth = 150;
+      const mainWidth = textWidth - sideWidth - gap;
+      const startY = pdf.y;
+
+      if (template.layoutKind === "sidebar") {
+        // Narrow left column, drawn first, then the main column.
+        pdf.x = margin;
+        pdf.y = startY;
+        for (const section of sideSections) {
+          drawSection(pdf, doc, section, sideWidth, false);
         }
-        for (const group of section.bullets) {
-          group.forEach((line, index) => {
-            if (index === 0) {
-              pdf.font("Helvetica-Bold").text(line, { width: textWidth });
-              pdf.font("Helvetica");
-            } else {
-              pdf.text(`- ${line}`, { width: textWidth });
-            }
-          });
-          pdf.moveDown(0.4);
+        // Main column flow, with page breaks keeping the indent.
+        pdf.on("pageAdded", () => {
+          pdf.x = margin + sideWidth + gap;
+          pdf.y = margin;
+        });
+        pdf.x = margin + sideWidth + gap;
+        pdf.y = startY;
+        drawFlowSections(pdf, doc, mainSections, mainWidth, accentLine);
+      } else {
+        // Wide main column on the left, narrow right column.
+        const rightX = margin + mainWidth + gap;
+        pdf.x = rightX;
+        pdf.y = startY;
+        for (const section of sideSections) {
+          drawSection(pdf, doc, section, sideWidth, false);
         }
-        pdf.moveDown(0.6);
+        pdf.on("pageAdded", () => {
+          pdf.x = margin;
+          pdf.y = margin;
+        });
+        pdf.x = margin;
+        pdf.y = startY;
+        drawFlowSections(pdf, doc, mainSections, mainWidth, false);
       }
     } else {
-      // ATS Minimal: plain single column, standard headings, no accents.
-      pdf.font("Helvetica-Bold").fontSize(18);
-      pdf.text(doc.profile.fullName, { width: textWidth });
-      pdf.font("Helvetica").fontSize(10.5);
-      pdf.text(doc.profile.headline, { width: textWidth });
-      pdf.text(
-        `SAMPLE: ${doc.profile.email} | ${doc.profile.phone} | ${doc.profile.city}`,
-        { width: textWidth }
-      );
-      pdf.moveDown(1);
-      for (const section of doc.sections) {
-        pdf.font("Helvetica-Bold").fontSize(11);
-        pdf.text(section.title.toUpperCase(), { width: textWidth });
-        pdf.font("Helvetica").fontSize(10.5);
-        for (const line of section.lines) {
-          pdf.text(line, { width: textWidth });
-        }
-        for (const group of section.bullets) {
-          group.forEach((line, index) => {
-            if (index === 0) {
-              pdf.font("Helvetica-Bold").text(line, { width: textWidth });
-              pdf.font("Helvetica");
-            } else {
-              pdf.text(`- ${line}`, { width: textWidth });
-            }
-          });
-          pdf.moveDown(0.4);
-        }
-        pdf.moveDown(0.6);
-      }
+      drawFlowSections(pdf, doc, doc.sections, textWidth, accentLine);
     }
 
     pdf.end();
