@@ -4,6 +4,7 @@ import {
   renderLetterDocx,
   renderLetterPdf
 } from "@global-career-studio/template-engine";
+import { canExportLetter } from "../../../lib/billing-core.mjs";
 
 // Letter export API, Phase 2 increment 7.
 // Renders letter text the user already checked, through the real
@@ -22,6 +23,12 @@ export async function POST(request: Request) {
     const format = body?.format;
     if (paragraphs.length === 0) {
       return NextResponse.json({ error: "Letter text is required for export." }, { status: 400 });
+    }
+    if (typeof body?.subscriptionPlan === "string" && (format === "pdf" || format === "docx")) {
+      const entitlement = canExportLetter({ planId: body.subscriptionPlan, format, existingDocument: false });
+      if (!entitlement.allowed) {
+        return NextResponse.json({ error: entitlement.reason }, { status: 403 });
+      }
     }
     if (format === "pdf") {
       const buffer = await renderLetterPdf(title, paragraphs);
