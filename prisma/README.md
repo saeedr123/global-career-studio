@@ -1,3 +1,28 @@
+# Prisma (Phase 2 increment 11)
+
+This folder holds the Prisma schema only. No migration has been run yet,
+and no database is connected. All accounts, drafts, job versions,
+letters, and admin state remain local browser data only, clearly
+labelled, until Prisma validation and a test migration pass elsewhere.
+
+## Increment 11 validation retry, honest result
+
+Prisma validation did NOT pass again, and no migration was run.
+Retry made once in this increment, in a clean temporary folder with
+the current schema copied from this folder, Node v24.22.1,
+npm 10.9.4:
+- Command: npm install --no-bin-links --ignore-scripts prisma@6.14.0,
+  then node node_modules/prisma/build/index.js validate --schema schema.prisma
+- Install result: succeeded, 35 packages.
+- Validate result: exit 1, exact error: Error aborted, at
+  TLSSocket.socketCloseListener, code ECONNRESET, attemptNumber 1,
+  retriesLeft 2. This is the same engine download failure as
+  increments 1, 2, and 3. No provider was changed to SQLite to
+  force a green check, and no migration was run, because validation
+  did not pass.
+Do NOT treat the schema as officially validated until prisma validate
+and a test migration pass on a machine where the engine download works.
+
 # Prisma (Phase 2 increment 3)
 
 This folder holds the Prisma schema only. No migration has been run yet,
