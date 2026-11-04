@@ -3,6 +3,7 @@
 ## AI-Powered International CV, Resume and Career Document SaaS
 
 Status: Rewritten prompt, 4 November 2026. Approved by Ali for Phase 1 planning.
+Status update, Phase 2 increment 2, 4 November 2026: Combined now, split later, is now the standing edition decision. It supersedes a brief two separate versions choice made the same day, and it restores the original v2 principle of initially same login, modular so it can split later. Section 2.6 records the split ready rules. No other scope in this prompt changes in this update.
 Status note: This prompt is the controlling brief. It is not code, and no feature in it is claimed as built until it is implemented and tested in the repository.
 
 This version incorporates Ali's original prompt, Muse's review suggestions from 4 November 2026, and Ali's decisions from the same day. Where this version changes the original, this version wins.
@@ -51,9 +52,18 @@ The product must be suitable for real customers worldwide, capable of producing 
 ## 2. BRAND, PLACEMENT, AND LOGIN
 
 2.1. Brand: Global Career Studio, as a standalone commercial brand.
-2.2. Placement: ONE integrated application. It is reached from nvconsult.eu (tools section, menu link, and relevant service pages) and directly on its own tools site. Both entry points use the same application, same account, and same documents. There is no second copy of the builder to maintain.
+2.2. Placement: ONE combined application now, split later if needed. It is reached from nvconsult.eu (tools section, menu link, and relevant service pages) and directly on its own tools site. Both entry points use the same application, same account, and same documents now. There is no second copy of the builder to maintain in version 1.
 2.3. NVConsult link, commercial logic: The NVConsult audience (students and workers from Asia, Africa, and beyond, moving to Europe and beyond) is a launch audience and a trust channel, not the only market. The product must also make sense to a visitor who has never heard of NVConsult.
 2.4. Login, initial decision: Initially the same login system is used across NVConsult and Global Career Studio. Implement auth as a modular service with a clear boundary, so a later split (separate NVConsult login and Studio login, or single sign on) is a configuration and migration task, not a rewrite.
+2.5. Free tier presentation, decided 4 November 2026: Same free tier for everyone, in both editions. NVConsult adds human help: free consultation and human CV review as the extra. There is no special NVConsult client Studio benefit at launch, and no second public price list. A client benefit through an admin invite code may be added later, not as a second public price list.
+2.6. Split ready design, decided 4 November 2026: Combined now, split later if needed. The following rules are mandatory, so a later split is a deployment and data partition task, not a rebuild:
+- Shared template and export engine: templates, rendering, PDF export, and DOCX export live in one package, used by both editions.
+- Separate skins and copy per edition: branding, header, landing copy, buttons, and help links are edition configuration, never hard coded into the engine.
+- Modular auth service: auth is a separate module with a clear interface, so each edition can later have its own login without rewriting the builder, templates, or billing.
+- Edition tag on every user and document: each User row and each Document row carries an edition value (nvconsult or commercial) recording the entry edition. A user who uses both editions will have documents in both partitions, and that case must be resolved explicitly at split time, not silently assigned to one side.
+- Separate billing products per edition, even on the same Stripe account: plan and trial products are configured per edition, so they can be moved apart without changing prices for the other edition.
+- Separate entry points: nvconsult.eu is the NVConsult journey, the tools site is the commercial journey, even though both open the same application now. The tools site domain is on hold as of 4 November 2026, so use placeholder domain configuration only, do not check domain availability, and do not purchase anything.
+- What a split would require, in order: copy the app shell into two deployments, keep the shared engine, partition users and documents by the edition tag, move each billing product to its own setup, give each edition its own login if required, retest exports and billing in both deployments, and tell users which door they are now on, with redirects from old links. A split must not be started on the basis of this paragraph alone; it needs a separate decision from Ali, with a migration plan and a test database run first.
 2.5. Account data: One candidate profile per account, reused across documents. A user must not retype personal details, education, and work history for every new CV or letter.
 
 ## 3. COMPETITOR RESEARCH (PHASE 1, BEFORE BUILDING FEATURES)
@@ -373,7 +383,7 @@ These are not blockers for Phase 0 and Phase 1, but they are blockers for a comm
 - Final price for monthly and annual premium, and currency. Starting defaults in section 14 are configuration defaults, not prices.
 - Stripe account owner, business details, and VAT treatment confirmation.
 - AI provider choice and budget cap for AI credits, plus fallback provider if the primary is unavailable.
-- Domain or subdomain for the tools site, and the exact nvconsult.eu link locations.
+- Domain or subdomain for the tools site, and the exact nvconsult.eu link locations. Note, 4 November 2026: the tools site domain idea is on hold. Do not check domain availability and do not purchase anything until Ali reopens it. Use placeholder domain configuration only.
 - Hosting provider for the Next.js app, hosted Postgres provider, and object storage provider.
 - GitHub repository name, owner, and visibility.
 - Privacy policy, terms, and refund policy final wording, with a legal check for GDPR and consumer rights.
