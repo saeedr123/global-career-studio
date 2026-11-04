@@ -125,6 +125,7 @@ export default function Dashboard() {
         <a className="rounded border border-slate-300 px-4 py-2" href="/writer">Local writer</a>
         <a className="rounded border border-slate-300 px-4 py-2" href="/letters">Letter studio</a>
         <a className="rounded border border-slate-300 px-4 py-2" href="/ats">ATS check, heuristic only</a>
+        <a className="rounded border border-slate-300 px-4 py-2" href="/subscription">Subscription, local only</a>
       </p>
 
       <h2 className="mt-8 text-2xl font-semibold">Your documents, local only</h2>
@@ -173,8 +174,9 @@ export default function Dashboard() {
           <p className="mt-2 text-slate-700">Not yet connected. No connected AI generation and no credit balance is shown here, because no AI provider is connected.</p>
         </div>
         <div className="rounded border border-slate-200 bg-white p-4">
-          <h3 className="font-semibold">Subscription</h3>
-          <p className="mt-2 text-slate-700">Not yet connected. No payment, price, trial, or subscription status is shown here, because no price or Stripe account has been decided.</p>
+          <h3 className="font-semibold">Subscription, local only</h3>
+          <p className="mt-2 text-slate-700">Local plan config only, in this browser. No payment, price, or Stripe account has been decided, and no checkout is working. Trial, entitlements, downgrade behaviour, and local cancel are shown on the subscription page.</p>
+          <p className="mt-2"><a className="text-blue-700 underline" href="/subscription">Open the subscription page</a></p>
         </div>
         <div className="rounded border border-slate-200 bg-white p-4">
           <h3 className="font-semibold">Human review</h3>
