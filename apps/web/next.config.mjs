@@ -6,7 +6,7 @@ const nextConfig = {
   // Keeping pdfkit, docx, and the template engine external on the
   // server preserves their package folders and data files.
   experimental: {
-    serverComponentsExternalPackages: ["pdfkit", "docx"]
+    serverComponentsExternalPackages: ["pdfkit", "docx", "pdfjs-dist", "adm-zip"]
   },
   webpack: (config, { isServer }) => {
     if (isServer) {
@@ -14,6 +14,8 @@ const nextConfig = {
         ...(config.externals || []),
         "pdfkit",
         "docx",
+        "pdfjs-dist",
+        "adm-zip",
         "@global-career-studio/template-engine"
       ];
     }
