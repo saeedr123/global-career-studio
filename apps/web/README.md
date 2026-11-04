@@ -160,7 +160,7 @@ npm run test:writer
 In increment 7, typecheck passed, the production build passed for both
 editions (routes `/`, `/builder` 8.36 kB, `/dashboard` 5.31 kB
 commercial and 4.52 kB nvconsult, `/auth` 4.97 kB commercial and
-4.16 kB nvconsult, `/profile` 3.54 kB, `/writer` 5.19 kB,
+4.16 kB nvconsult, `/profile` 3.54 kB, `/writer` 5.21 kB,
 `/letters` 5.38 kB, `/ats` 4.91 kB, plus `/api/export`,
 `/api/import`, `/api/letter-export`, and `/api/auth`), the builder
 test passed 25 of 25, the import test passed 6 of 6, the auth test
