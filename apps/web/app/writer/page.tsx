@@ -45,7 +45,16 @@ export default function WriterPage() {
 
   function saveProfile(next: any) {
     setProfile(next);
-    const draft = { label: "Draft", savedAt: new Date().toISOString(), profile: next, settings: { templateId: "ats-minimal", paperSize: "A4", includePhoto: false, sectionOrder: ["summary", "experience", "education", "skills", "languages"] } };
+    let settings = { templateId: "ats-minimal", paperSize: "A4", includePhoto: false, sectionOrder: ["summary", "experience", "education", "skills", "languages"] };
+    try {
+      const existing = window.localStorage.getItem(DRAFT_KEY);
+      if (existing) {
+        settings = parseDraft(existing).settings || settings;
+      }
+    } catch {
+      // Keep the default settings above if the existing draft cannot be read.
+    }
+    const draft = { label: "Draft", savedAt: new Date().toISOString(), profile: next, settings };
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
   }
 
