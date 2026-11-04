@@ -18,15 +18,15 @@ export default function Home() {
       <h1 className="mt-2 text-4xl font-bold text-navy">{editionConfig.brandName}</h1>
       <p className="mt-4 text-lg text-slate-700">{editionConfig.tagline}</p>
       <p className="mt-4 rounded border border-amber-300 bg-amber-50 p-4 text-slate-800">
-        {siteConfig.status} This page has no accounts, no payments, no AI
-        generation, no document editing, and no letter studio yet. Those parts are
-        later Phase 2 work, after the open decisions in PROJECT_STATUS.md
-        are made. No price, trial offer, or limit is stated here, because
-        none has been decided.
+        {siteConfig.status} This app has local accounts and a working local
+        dashboard, plus the CV builder, but no payments, no AI generation,
+        and no letter studio yet. Those parts are later Phase 2 work, after
+        the open decisions in PROJECT_STATUS.md are made. No price, trial
+        offer, or limit is stated here, because none has been decided.
       </p>
       <p className="mt-4 text-slate-700">
         <a className="text-blue-700 underline" href="/dashboard">
-          View the dashboard shell (placeholders only)
+          View the dashboard, local drafts only
         </a>
       </p>
       <h2 className="mt-10 text-2xl font-semibold">What increment 1 proves</h2>
