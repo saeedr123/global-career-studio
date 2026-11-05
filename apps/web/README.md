@@ -63,6 +63,27 @@ sets a budget cap. No budget cap has been set yet.
   file reaches GitHub. The CI run is NOT claimed as passed, and no
   CI run is pending, because the file is not on GitHub yet. The schema provider was NOT changed to SQLite, and no
   migration was run against any real database.
+- Real database layer, increment 13, Neon chosen, not connected
+  yet: the chosen hosted Postgres is Neon, free plan, region AWS
+  EU Central Frankfurt (eu-central-1). See docs/database-design.md
+  and docs/deployment-preparation.md for the decision, the limits,
+  and the runner up. The Prisma client setup is in `lib/prisma.ts`
+  (singleton, DATABASE_URL from the environment only), the server
+  side data layer is in `lib/database-core.mjs` (User, Profile and
+  profile detail rows, Document, DocumentVersion, admin audit, with
+  ownership checks and no password hash ever returned), and the
+  status route is at `app/api/database-status/route.ts`. The initial
+  migration is at `prisma/migrations/20261105000000_init/`, proved
+  in CI by `.github/workflows/prisma-migration.yml` with prisma
+  migrate deploy against an ephemeral Postgres service container
+  only. The Neon deploy workflow is
+  `.github/workflows/neon-migrate-deploy.yml`, manual only, and it
+  fails plainly until the owner adds a DATABASE_URL repo secret
+  himself. No live Neon database is connected in this increment,
+  and all accounts, drafts, job versions, letters, and admin state
+  still use local browser storage, clearly labelled. Database tests
+  at `scripts/test-database.mjs` passed 25 of 25 with a mocked
+  client only.
 - AI provider abstraction, increment 11, provider finalized, live
   call not faked: provider logic in `lib/ai-provider-core.mjs`,
   with Muse AI as the selected provider, configured only through
