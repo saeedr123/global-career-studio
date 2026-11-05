@@ -18,7 +18,7 @@ function buildSections(
     summary: {
       key: "summary",
       title: titleFor("summary", "Summary"),
-      lines: [`SAMPLE: ${profile.summary}`],
+      lines: [profile.summary ? (profile.sampleMarker === "SAMPLE" ? `SAMPLE: ${profile.summary}` : profile.summary) : ""],
       bullets: []
     },
     experience: {
