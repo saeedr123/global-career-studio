@@ -16,7 +16,11 @@ import { PLANS } from "../lib/billing-core.mjs";
 // so the operator identity now lives on nvconsult.eu only, reached
 // from the footer link. Entrance motion
 // is the shared reveal class from globals.css, transform and
-// opacity only, ending at full opacity.
+// opacity only, ending at full opacity. Increment 20: the footer
+// matches the main site, the sections are divided by gold rules,
+// and a navy booking strip for the free consultation closes the
+// page. The strip sends visitors to the human help funnel, which
+// routes them to booking when a call is needed.
 
 const FREE_PLAN = PLANS.find((plan: any) => plan.id === "free");
 if (!FREE_PLAN) {
@@ -119,6 +123,8 @@ export default function Home() {
         </p>
       </section>
 
+      <div className="section-divider mx-auto max-w-5xl px-4 sm:px-6" aria-hidden="true" />
+
       <section id="how-it-works" className="reveal reveal-delay-1 mx-auto max-w-5xl px-4 py-10 sm:px-6">
         <p className="eyebrow">How it works</p>
         <h2 className="section-title mt-2">Four steps, no retyping</h2>
@@ -156,6 +162,8 @@ export default function Home() {
         </p>
       </section>
 
+      <div className="section-divider mx-auto max-w-5xl px-4 sm:px-6" aria-hidden="true" />
+
       <section id="free" className="reveal reveal-delay-2 mx-auto max-w-5xl px-4 py-10 sm:px-6">
         <p className="eyebrow">Free tier</p>
         <h2 className="section-title mt-2">Free means free, and the limits are stated</h2>
@@ -175,10 +183,26 @@ export default function Home() {
           <a className="btn-primary" href="/builder">
             Start free
           </a>
-          <a className="brand-link" href="https://nvconsult.eu">
+          <a className="brand-link" href="/human-help">
             {isNvconsult ? "Book a free consultation" : "Need human help?"}
           </a>
         </p>
+      </section>
+
+      <section className="hero booking-strip">
+        <div className="reveal mx-auto max-w-5xl px-4 py-10 sm:px-6">
+          <p className="text-sm font-semibold uppercase tracking-wide text-slate-300">Free consultation</p>
+          <h2 className="hero-title mt-3">Not sure where to start?</h2>
+          <p className="lead mt-4 max-w-2xl text-slate-200">
+            Tell NVConsult what you need, then book a free 20-minute consultation if a call is the
+            right next step.
+          </p>
+          <p className="mt-6">
+            <a className="btn-primary" href="/human-help">
+              Book a free consultation
+            </a>
+          </p>
+        </div>
       </section>
     </main>
   );
