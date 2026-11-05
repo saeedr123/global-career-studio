@@ -1,10 +1,14 @@
 # Deployment preparation
 
-Status: docs only, Phase 2 increment 12. This document is NOT a
+Status: docs only, Phase 2 increment 14. This document is NOT a
 launch approval, and nothing in it deploys, buys, or creates any
-live account. The product is NOT launch ready. Do the steps below,
-in order, and recheck each one with evidence, before any real
-deployment is attempted.
+live account. The product is NOT launch ready. The owner decided
+on 2026-11-05 to launch as a free beta on nvconsult.eu, free tier
+only, clearly labelled beta, no payments, Stripe on hold, no Muse
+AI key or budget cap yet, legal docs in the repo only, no live
+nvconsult.eu change yet, hosting route still undecided, no
+deployment anywhere. Do the steps below, in order, and recheck
+each one with evidence, before any real deployment is attempted.
 
 ## 1. Prisma validate and test migration passing elsewhere
 
@@ -52,7 +56,28 @@ pushed, not claimed as passed, because this environment cannot
 check a run status on GitHub. No migration has been run against
 any real database yet, and no live Neon database is connected.
 All accounts, drafts, job versions, letters, and admin state remain
-local browser data only, clearly labelled. Before any deployment:
+local browser data only, clearly labelled.
+In increment 14, the Session model was added to the schema and a
+new authored migration was created at
+prisma/migrations/20261105080000_add_session/migration.sql, and a
+new workflow at
+.github/workflows/prisma-session-validate.yml runs prisma
+validate, prisma generate, prisma migrate deploy, prisma migrate
+status, and prisma db push against an ephemeral Postgres 15
+service container, all against the ephemeral test database only.
+That workflow is pushed, and its run is pending on GitHub, not
+claimed as passed, because this environment cannot check a run
+status. The initial migration is now applied to the live Neon
+database, 33 public tables, migration 20261105000000_init, User
+rows 0, but the Session migration has NOT been applied to the live
+Neon database yet: it needs the owner to run the manual Neon
+migrate deploy workflow on GitHub once, after increment 14 is
+pushed. Local Prisma generate in increment 14 failed again with
+the same ECONNRESET engine download error, so no client was
+generated locally, and a deploy time generate step was added at
+apps/web/scripts/prisma-generate.mjs, run as the prebuild step of
+npm run build, which warns and continues where generation fails
+instead of failing the build. Before any deployment:
 
 - Run Prisma validate on a machine where the engine download works.
 - Run a test migration against a test database, not production data.
@@ -78,17 +103,24 @@ local browser data only, clearly labelled. Before any deployment:
 - Choose a Postgres host and region, with backups and a restore
   test, before any user data is stored there. The host and region
   choice is now made (Neon, eu-central-1). Backups and a restore
-  test are still open, and no live Neon database is connected yet,
-  because the owner has not added the DATABASE_URL repo secret.
-  The owner adds it himself on GitHub at Settings, Secrets and
-  variables, Actions, New repository secret, name DATABASE_URL,
-  value the Neon pooled connection string, and never pastes it in
-  chat or in any file. The Neon deploy workflow at
-  .github/workflows/neon-migrate-deploy.yml is manual only and
-  fails plainly until that secret exists.
+  test are still open. The live Neon database now has the initial
+  migration applied, 33 public tables, User rows 0, and both
+  DATABASE_URL and DIRECT_URL repo secrets exist. The Session
+  migration from increment 14 is NOT applied to the live database
+  yet: it needs the owner to run the manual Neon migrate deploy
+  workflow at .github/workflows/neon-migrate-deploy.yml on GitHub
+  once, after increment 14 is pushed, exactly as for the initial
+  migration. That workflow never runs on push.
 - Move local browser accounts, profiles, drafts, job versions, and
   letters to the real database through the planned data layer
-  change, keeping the same account and session shapes.
+  change, keeping the same account and session shapes. Increment
+  14 did the server side of this: the auth, profile, and
+  documents API routes now use the database layer when a database
+  is configured and the generated client is available, with a
+  local only 501 fallback otherwise. The browser pages still use
+  local storage in this increment, and moving them to the new
+  server routes is a later step, before any user is told their
+  account syncs across devices.
 - Confirm account deletion removes photos, exports, and AI logs,
   with the backup expiry statement published alongside it.
 - Confirm admin access to user documents is logged, for support
@@ -195,9 +227,16 @@ These items are still undone, and launch must wait for them:
   Increment 12 validate passed in CI, 4 green runs. Increment 13
   adds the Neon decision, the data layer, the initial migration,
   and the CI migration proof workflow, all pushed, CI run pending
-  on GitHub, not claimed as passed. No live Neon database is
-  connected yet, because the DATABASE_URL secret still has to be
-  added by the owner, and no production data has moved.
+  on GitHub, not claimed as passed. The initial migration is now
+  applied to the live Neon database, 33 public tables, User rows
+  0. Increment 14 adds server sessions, the Session migration,
+  the auth, profile, and documents server routes, a deploy time
+  generate step, and a new session validate workflow, pushed and
+  pending, not claimed as passed. Still open: the owner running
+  the manual Neon migrate deploy workflow once more for the
+  Session migration, generating the Prisma client where the
+  engine download works, moving the browser pages to the server
+  routes, and moving production data, which has not moved.
 - Real admin auth, replacing the local only admin page in this
   increment, which must never be presented as a secured production
   admin.
