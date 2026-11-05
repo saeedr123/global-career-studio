@@ -10,9 +10,11 @@ import { PLANS } from "../lib/billing-core.mjs";
 // systems, dossier rules 3, 4, 10, 13 and 14. Every number on this
 // page is counted from the code lists, never typed in by hand, and
 // no counter, percentage, success rate, testimonial, or slider
-// appears anywhere, dossier rules 2 and 18. The hero trust line is
+// appears anywhere, dossier rules 2 and 18. The hero trust line was
 // the checkable operator line in the NVConsult edition only, rule 8.
-// The footer no longer carries it, Increment 18. Entrance motion
+// It was removed from the hero as well as the footer, Increment 18,
+// so the operator identity now lives on nvconsult.eu only, reached
+// from the footer link. Entrance motion
 // is the shared reveal class from globals.css, transform and
 // opacity only, ending at full opacity.
 
@@ -51,11 +53,6 @@ export default function Home() {
             <a className="inline-flex min-h-[44px] items-center text-white underline underline-offset-2" href="/#how-it-works">
               See how it works
             </a>
-          </p>
-          <p className="mt-6 text-sm text-slate-300">
-            {isNvconsult
-              ? "NVConsult is a trading name of Saeed Rasul. IČO: 23038594, Brno, Czech Republic."
-              : "Free tier for everyone. No card needed to start."}
           </p>
         </div>
       </section>
