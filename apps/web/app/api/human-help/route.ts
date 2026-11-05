@@ -11,16 +11,16 @@
 // migrated yet, it answers a plain JSON error instead of an empty
 // 500. Nothing here promises a reply time, a price, or an email,
 // because no email is sent and the turnaround is not decided.
-// The list endpoint is unprotected, the same posture as the
-// unlinked admin page itself, which is not a secured production
-// admin. Gating the list behind an admin session is a separate
-// decision for the owner.
+// The list endpoint needs a signed in admin session since
+// 2026-11-05, see GET below, because it returns names and emails.
 import { getDatabaseStatus, getPrismaClient } from "../../../lib/prisma";
 import {
   createHumanHelpRequest,
+  getAdminFromToken,
   listHumanHelpRequests,
   validateHumanHelpRequest
 } from "../../../lib/database-core.mjs";
+import { checkRateLimit, clientAddress, tooManyRequestsResponse } from "../../../lib/rate-limit-core.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -48,10 +48,34 @@ function localOnlyResponse(database: any) {
   );
 }
 
-export async function GET() {
+function bearerToken(request: Request) {
+  const header = request.headers.get("authorization") || "";
+  if (header.toLowerCase().startsWith("bearer ")) {
+    return header.slice(7).trim();
+  }
+  return "";
+}
+
+// The list holds names and emails, so since 2026-11-05 it is only
+// returned to a signed in user with the admin role, checked on the
+// server from the Bearer session token. Anyone else gets 401 with no
+// data. Saving a request (POST) stays open, with a rate limit.
+export async function GET(request: Request) {
   const { client, status } = await getClient();
   if (!client) {
     return localOnlyResponse(status);
+  }
+  let admin: any = null;
+  try {
+    admin = await getAdminFromToken(client, bearerToken(request));
+  } catch {
+    admin = null;
+  }
+  if (!admin) {
+    return Response.json(
+      { error: "Sign in with an admin account to see human help requests." },
+      { status: 401 }
+    );
   }
   try {
     const requests = await listHumanHelpRequests(client);
@@ -65,6 +89,10 @@ export async function POST(request: Request) {
   const { client, status } = await getClient();
   if (!client) {
     return localOnlyResponse(status);
+  }
+  const limited = checkRateLimit(`human-help:ip:${clientAddress(request.headers)}`, 5, 60 * 60 * 1000);
+  if (!limited.allowed) {
+    return tooManyRequestsResponse(limited);
   }
   let body: any = {};
   try {

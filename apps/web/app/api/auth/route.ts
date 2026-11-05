@@ -24,11 +24,18 @@ import {
   getUserRecordByEmail,
   hashServerPassword,
   isValidEmail,
+  passwordNeedsRehash,
   revokeSessionRecord,
+  updateUserPasswordHash,
   verifyServerPassword
 } from "../../../lib/database-core.mjs";
+import { checkRateLimit, clientAddress, tooManyRequestsResponse } from "../../../lib/rate-limit-core.mjs";
 
 export const dynamic = "force-dynamic";
+
+// A scrypt hash of a random throwaway value, made once per instance,
+// used only to spend equal time when a sign in email has no account.
+const DUMMY_PASSWORD_HASH = hashServerPassword(`dummy-${Date.now()}-${Math.random()}`).passwordHash;
 
 async function getClient() {
   const status = await getDatabaseStatus();
@@ -98,6 +105,23 @@ export async function POST(request: Request) {
   if (!client) {
     return localOnlyResponse(action, status);
   }
+  if (action === "signup" || action === "login") {
+    // Limits, 2026-11-05: 20 sign up or sign in attempts per address
+    // per 15 minutes, and 8 sign in attempts per email per 15
+    // minutes, so one account cannot be guessed at from many places.
+    const address = clientAddress(request.headers);
+    const byAddress = checkRateLimit(`auth:ip:${address}`, 20, 15 * 60 * 1000);
+    if (!byAddress.allowed) {
+      return tooManyRequestsResponse(byAddress);
+    }
+    if (action === "login") {
+      const emailKey = String(body?.email || "").trim().toLowerCase();
+      const byEmail = checkRateLimit(`auth:email:${emailKey}`, 8, 15 * 60 * 1000);
+      if (!byEmail.allowed) {
+        return tooManyRequestsResponse(byEmail);
+      }
+    }
+  }
   if (action === "request-reset" || action === "reset") {
     return Response.json(
       {
@@ -163,8 +187,24 @@ export async function POST(request: Request) {
     return Response.json({ error: "A valid email and a password are required." }, { status: 400 });
   }
   const record = await getUserRecordByEmail(client, email);
-  if (!record || !verifyServerPassword(password, record.passwordHash)) {
+  if (!record) {
+    // Spend the same time as a real check, so response time does not
+    // reveal whether an email has an account.
+    verifyServerPassword(password, DUMMY_PASSWORD_HASH);
     return Response.json({ error: "The email or password does not match." }, { status: 401 });
+  }
+  if (!verifyServerPassword(password, record.passwordHash)) {
+    return Response.json({ error: "The email or password does not match." }, { status: 401 });
+  }
+  if (passwordNeedsRehash(record.passwordHash)) {
+    // Upgrade an old SHA-256 row to scrypt now that the plain
+    // password is known to be right. A failure here never blocks
+    // the sign in; the row is upgraded on a later sign in instead.
+    try {
+      await updateUserPasswordHash(client, record.id, hashServerPassword(password).passwordHash);
+    } catch {
+      // Keep the sign in working.
+    }
   }
   const created = await createSessionRecord(client, record.id);
   const { passwordHash, ...account } = record;
