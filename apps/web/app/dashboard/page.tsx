@@ -11,14 +11,23 @@ import {
   seedDocumentsFromBuilder
 } from "../../lib/auth-core.mjs";
 import { parseDraft } from "../../lib/builder-core.mjs";
+import {
+  deleteServerDocument,
+  fetchServerDocuments,
+  readServerSession
+} from "../../lib/session-client.mjs";
+import { edition } from "../../lib/config";
 
-// Working dashboard, Phase 2 increment 6, local drafts only.
-// This replaces the increment 2 placeholder shell. It lists local
-// drafts and job versions, with create, open in builder, duplicate,
-// rename, and delete with confirmation. AI credits, subscription, and
-// human review are still clearly labelled not yet connected, and are
-// not presented as working features. No database, payment, or AI is
-// connected in this increment, and drafts live in this browser only.
+// Working dashboard, Phase 2 increment 15, server and local documents.
+// This replaces the increment 6 local only dashboard. When signed in
+// with a server session, it lists that user's documents from
+// /api/documents, labelled server, with open in builder and delete
+// through the server. Local browser documents are still listed,
+// labelled local, and are never silently dropped or overwritten.
+// Rename and duplicate stay local only, because the server API does
+// not offer them yet. AI credits, subscription, and human review are
+// still clearly labelled not yet connected, and are not presented as
+// working features. No payment or AI is connected here.
 
 const DRAFT_KEY = "gcs-builder-draft";
 const JOB_VERSIONS_KEY = "gcs-builder-job-versions";
@@ -29,7 +38,10 @@ const MASTER_LABEL_KEY = "gcs-master-label";
 
 export default function Dashboard() {
   const [sessionEmail, setSessionEmail] = useState("");
+  const [sessionMode, setSessionMode] = useState("");
   const [documents, setDocuments] = useState<any[]>([]);
+  const [serverDocuments, setServerDocuments] = useState<any[]>([]);
+  const [serverAvailable, setServerAvailable] = useState(false);
   const [renameId, setRenameId] = useState("");
   const [renameValue, setRenameValue] = useState("");
   const [message, setMessage] = useState("");
@@ -55,16 +67,46 @@ export default function Dashboard() {
     }
   }
 
+  async function loadServerDocuments() {
+    const session = readServerSession(window.localStorage);
+    if (!session) {
+      setServerDocuments([]);
+      setServerAvailable(false);
+      return;
+    }
+    setServerAvailable(true);
+    try {
+      const listed = await fetchServerDocuments(undefined, session, edition);
+      setServerDocuments(listed);
+    } catch (error: any) {
+      setServerDocuments([]);
+      setMessage(
+        error?.code === "local_only" || error?.code === "unreachable"
+          ? "The server could not be reached, so server documents are not listed. Your local documents below are unchanged."
+          : error?.message || "Server documents could not be loaded."
+      );
+    }
+  }
+
   useEffect(() => {
     try {
       const session = JSON.parse(window.localStorage.getItem(SESSION_KEY) || "null");
-      if (isSessionValid(session)) {
+      if (session && session.mode === "server") {
+        const serverSession = readServerSession(window.localStorage);
+        if (serverSession) {
+          setSessionEmail(serverSession.email);
+          setSessionMode("server");
+        }
+      } else if (isSessionValid(session)) {
         setSessionEmail(session.email);
+        setSessionMode("local");
       }
     } catch {
       setSessionEmail("");
+      setSessionMode("");
     }
     loadDocuments();
+    loadServerDocuments();
   }, []);
 
   function persist(next: any[]) {
@@ -76,6 +118,30 @@ export default function Dashboard() {
   function openInBuilder(document: any) {
     window.localStorage.setItem(OPEN_KEY, JSON.stringify(document));
     window.location.href = "/builder";
+  }
+
+  function openServerInBuilder(document: any) {
+    window.localStorage.setItem(OPEN_KEY, JSON.stringify({ ...document, serverDocument: true, label: document.title || "Untitled document" }));
+    window.location.href = "/builder";
+  }
+
+  async function handleServerDelete(id: string, label: string) {
+    const session = readServerSession(window.localStorage);
+    if (!session) {
+      setMessage("No server session was found, so the server document was not deleted.");
+      return;
+    }
+    if (!window.confirm(`Delete "${label}" from the server? This removes the server copy. Your local drafts are not touched.`)) {
+      setMessage("Delete cancelled. The server document was not removed.");
+      return;
+    }
+    try {
+      await deleteServerDocument(undefined, session, id);
+      setServerDocuments((current: any[]) => current.filter((item: any) => item.id !== id));
+      setMessage(`Server document deleted: ${label}.`);
+    } catch (error: any) {
+      setMessage(error?.message || "Server delete failed. The document was not removed.");
+    }
   }
 
   function handleDuplicate(id: string) {
@@ -112,11 +178,11 @@ export default function Dashboard() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Dashboard, local drafts only</p>
+      <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Dashboard{sessionMode === "server" ? ", server and local documents" : ", local drafts only"}</p>
       <h1 className="mt-2 text-3xl font-bold text-navy">Dashboard</h1>
       <p className="mt-3 text-slate-700">{editionConfig.dashboardIntro}</p>
       <p className="mt-4 rounded border border-amber-300 bg-amber-50 p-4 text-slate-800">
-        {siteConfig.status} {sessionEmail ? `Signed in locally as ${sessionEmail}.` : "Not signed in locally. The documents below are local browser drafts only, not server documents."} No payment, AI, or real database is connected here.
+        {siteConfig.status} {sessionEmail ? (sessionMode === "server" ? `Signed in on the server as ${sessionEmail}.` : `Signed in locally as ${sessionEmail}.`) : "Not signed in. The documents below are local browser drafts only, not server documents."} No payment or AI is connected here.
       </p>
       <p className="mt-4 flex flex-wrap gap-2">
         <a className="rounded bg-navy px-4 py-2 text-white" href="/builder">Open the CV builder</a>
@@ -128,7 +194,32 @@ export default function Dashboard() {
         <a className="rounded border border-slate-300 px-4 py-2" href="/subscription">Subscription, local only</a>
       </p>
 
-      <h2 className="mt-8 text-2xl font-semibold">Your documents, local only</h2>
+      {serverAvailable && (
+        <>
+          <h2 className="mt-8 text-2xl font-semibold">Your documents on the server</h2>
+          {serverDocuments.length === 0 ? (
+            <p className="mt-3 text-slate-700">No server documents yet. Open the builder and use Save to server to store a copy there.</p>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {serverDocuments.map((document: any) => (
+                <li key={document.id} className="rounded border border-slate-200 bg-white p-4">
+                  <p className="font-semibold">{document.title || "Untitled document"}</p>
+                  <p className="text-sm text-slate-500">
+                    Server document | Template: {document.templateId || "not set"} | Paper: {document.paperSize === "US_LETTER" ? "US Letter" : "A4"} | Updated: {document.updatedAt || "not set"}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" className="rounded bg-navy px-3 py-2 text-sm text-white" onClick={() => openServerInBuilder(document)}>Open in builder</button>
+                    <button type="button" className="rounded border border-red-300 px-3 py-2 text-sm" onClick={() => handleServerDelete(document.id, document.title || "Untitled document")}>Delete from server, with confirmation</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 text-sm text-slate-500">Server documents store the title, template, paper size, and section order. The full profile content is stored separately on the profile page, not inside a server document. Rename and duplicate are not offered for server documents yet.</p>
+        </>
+      )}
+
+      <h2 className="mt-8 text-2xl font-semibold">Your documents in this browser, local only</h2>
       {documents.length === 0 ? (
         <p className="mt-3 text-slate-700">No local documents yet. Open the builder to create a draft, or import a CV there.</p>
       ) : (
