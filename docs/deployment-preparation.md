@@ -37,6 +37,20 @@ passed. No migration has been run against any real database yet.
 The provider was NOT
 changed to SQLite, checksums were NOT ignored, and no migration
 was run against any real database in increment 12.
+In increment 13, the initial migration was created at
+prisma/migrations/20261105000000_init/migration.sql, authored from
+the schema because the Prisma engine download fails in this
+workspace, and a new workflow at
+.github/workflows/prisma-migration.yml runs prisma migrate diff
+from empty to the schema as a review artifact and runs prisma
+migrate deploy with the committed migration against an ephemeral
+Postgres 15 service container, followed by prisma migrate status.
+Local Prisma generate in increment 13 failed again with the same
+ECONNRESET engine download error, so no client was generated
+locally and no migration was run locally. The CI migration run is
+pushed, not claimed as passed, because this environment cannot
+check a run status on GitHub. No migration has been run against
+any real database yet, and no live Neon database is connected.
 All accounts, drafts, job versions, letters, and admin state remain
 local browser data only, clearly labelled. Before any deployment:
 
@@ -49,8 +63,29 @@ local browser data only, clearly labelled. Before any deployment:
 
 ## 2. Real Postgres
 
+- Chosen in Phase 2 increment 13: Neon, free plan, region AWS EU
+  Central Frankfurt (eu-central-1), no card to start. Runner up:
+  Supabase, not chosen, because the Studio does not need its
+  bundled Auth, storage, or realtime, and its free plan pauses a
+  project after 7 days of inactivity and needs a manual restore,
+  which is the worse failure mode for a quiet beta. Limits to
+  recheck on Neon's own pricing page before creating: free storage
+  reported as 0.5 GB in some sources and 1 GB in others, about 100
+  CU-hours per project per month, scale to zero after 5 minutes
+  idle with a short cold start on the first query, and free
+  projects inactive 90 days or more are subject to deletion per
+  one source.
 - Choose a Postgres host and region, with backups and a restore
-  test, before any user data is stored there.
+  test, before any user data is stored there. The host and region
+  choice is now made (Neon, eu-central-1). Backups and a restore
+  test are still open, and no live Neon database is connected yet,
+  because the owner has not added the DATABASE_URL repo secret.
+  The owner adds it himself on GitHub at Settings, Secrets and
+  variables, Actions, New repository secret, name DATABASE_URL,
+  value the Neon pooled connection string, and never pastes it in
+  chat or in any file. The Neon deploy workflow at
+  .github/workflows/neon-migrate-deploy.yml is manual only and
+  fails plainly until that secret exists.
 - Move local browser accounts, profiles, drafts, job versions, and
   letters to the real database through the planned data layer
   change, keeping the same account and session shapes.
@@ -157,6 +192,12 @@ These items are still undone, and launch must wait for them:
   Stripe is on hold per owner decision, to be added later.
 - Real database, with Prisma validate and a test migration passing.
   Increment 11 retry still failed with ECONNRESET, see section 1.
+  Increment 12 validate passed in CI, 4 green runs. Increment 13
+  adds the Neon decision, the data layer, the initial migration,
+  and the CI migration proof workflow, all pushed, CI run pending
+  on GitHub, not claimed as passed. No live Neon database is
+  connected yet, because the DATABASE_URL secret still has to be
+  added by the owner, and no production data has moved.
 - Real admin auth, replacing the local only admin page in this
   increment, which must never be presented as a secured production
   admin.
@@ -246,6 +287,9 @@ a test, and never in a log:
 
 - Use a hosted Postgres database, not a local Postgres install,
   because the Phase 1 environment check found no local Postgres.
+  Chosen in Phase 2 increment 13: Neon, free plan, region AWS EU
+  Central Frankfurt (eu-central-1). See section 2 for the limits
+  and the runner up. No live Neon database is connected yet.
 - Run Prisma validate, then a test migration against a test
   database only, then generate the Prisma client, on a machine
   where the engine download works, before any production database
