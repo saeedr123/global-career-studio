@@ -10,6 +10,7 @@ import {
 } from "../../lib/auth-core.mjs";
 import { fetchServerProfile, readServerSession, saveServerProfile } from "../../lib/session-client.mjs";
 import { createDefaultSettings, parseDraft, validateProfile } from "../../lib/builder-core.mjs";
+import RequireAuth from "../components/RequireAuth";
 
 // Master profile editor, Phase 2 increment 15.
 // One profile per account, reused across documents. When signed in
@@ -157,31 +158,33 @@ export default function ProfilePage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Master profile{serverSession ? ", server and local" : ", local only"}</p>
-      <h1 className="mt-2 text-3xl font-bold text-navy">Profile</h1>
-      <p className="mt-3 text-slate-700">
+      <RequireAuth>
+      <p className="eyebrow">Master profile{serverSession ? ", server and local" : ", local only"}</p>
+      <h1 className="page-title">Profile</h1>
+      <p className="mt-3 text-ink">
         One profile per account, reused across documents. {serverSession ? `Signed in on the server as ${serverSession.email}. Saving stores the profile on the server and keeps a local copy in this browser.` : "This profile is stored in this browser only, until you sign in on the server."} It is empty by default, so nothing here is sample history. Editing a builder document does not change this profile, unless you confirm a save back.
       </p>
       <form className="mt-6 space-y-3" onSubmit={handleSave}>
-        <label className="block">Full name<input className="mt-1 block w-full rounded border p-2" value={profile.fullName || ""} onChange={(event) => updateField("fullName", event.target.value)} /></label>
-        <label className="block">Headline<input className="mt-1 block w-full rounded border p-2" value={profile.headline || ""} onChange={(event) => updateField("headline", event.target.value)} /></label>
-        <label className="block">Email<input className="mt-1 block w-full rounded border p-2" value={profile.email || ""} onChange={(event) => updateField("email", event.target.value)} /></label>
-        <label className="block">Phone<input className="mt-1 block w-full rounded border p-2" value={profile.phone || ""} onChange={(event) => setProfile((current: any) => ({ ...current, phone: event.target.value }))} /></label>
-        <label className="block">City<input className="mt-1 block w-full rounded border p-2" value={profile.city || ""} onChange={(event) => updateField("city", event.target.value)} /></label>
-        <label className="block">Summary<textarea className="mt-1 block w-full rounded border p-2" rows={4} value={profile.summary || ""} onChange={(event) => updateField("summary", event.target.value)} /></label>
-        <label className="block">Skills, comma separated<input className="mt-1 block w-full rounded border p-2" value={(profile.skills || []).join(", ")} onChange={(event) => updateList("skills", event.target.value)} /></label>
-        <label className="block">Languages, comma separated<input className="mt-1 block w-full rounded border p-2" value={(profile.languages || []).join(", ")} onChange={(event) => updateList("languages", event.target.value)} /></label>
-        <button type="submit" className="rounded bg-navy px-4 py-2 text-white">Save master profile{serverSession ? " on the server and locally" : " locally"}</button>
+        <label className="block">Full name<input className="mt-1 input-field" value={profile.fullName || ""} onChange={(event) => updateField("fullName", event.target.value)} /></label>
+        <label className="block">Headline<input className="mt-1 input-field" value={profile.headline || ""} onChange={(event) => updateField("headline", event.target.value)} /></label>
+        <label className="block">Email<input className="mt-1 input-field" value={profile.email || ""} onChange={(event) => updateField("email", event.target.value)} /></label>
+        <label className="block">Phone<input className="mt-1 input-field" value={profile.phone || ""} onChange={(event) => setProfile((current: any) => ({ ...current, phone: event.target.value }))} /></label>
+        <label className="block">City<input className="mt-1 input-field" value={profile.city || ""} onChange={(event) => updateField("city", event.target.value)} /></label>
+        <label className="block">Summary<textarea className="mt-1 input-field" rows={4} value={profile.summary || ""} onChange={(event) => updateField("summary", event.target.value)} /></label>
+        <label className="block">Skills, comma separated<input className="mt-1 input-field" value={(profile.skills || []).join(", ")} onChange={(event) => updateList("skills", event.target.value)} /></label>
+        <label className="block">Languages, comma separated<input className="mt-1 input-field" value={(profile.languages || []).join(", ")} onChange={(event) => updateList("languages", event.target.value)} /></label>
+        <button type="submit" className="btn-primary">Save master profile{serverSession ? " on the server and locally" : " locally"}</button>
       </form>
-      {missing.length > 0 && <p className="mt-3 text-slate-700">Missing for a complete profile: {missing.join(", ")}.</p>}
+      {missing.length > 0 && <p className="mt-3 text-ink">Missing for a complete profile: {missing.join(", ")}.</p>}
       <div className="mt-6 flex flex-wrap gap-2">
-        <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={loadFromBuilderDraft}>Load builder draft into profile</button>
-        <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={saveDraftBackToProfile}>Save builder draft back to profile, with confirmation</button>
-        <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={useProfileInBuilder}>Use this profile in the builder</button>
+        <button type="button" className="btn-secondary" onClick={loadFromBuilderDraft}>Load builder draft into profile</button>
+        <button type="button" className="btn-secondary" onClick={saveDraftBackToProfile}>Save builder draft back to profile, with confirmation</button>
+        <button type="button" className="btn-secondary" onClick={useProfileInBuilder}>Use this profile in the builder</button>
       </div>
-      <p className="mt-4 text-sm text-slate-500">Experience, education, and custom sections are edited in the builder for now. The profile fields above are the reusable core, and the full profile copy is preserved when a draft is loaded.</p>
-      {message && <p className="mt-4 text-slate-800">{message}</p>}
-      <p className="mt-4"><a className="text-blue-700 underline" href="/dashboard">Back to the dashboard</a></p>
+      <p className="mt-4 text-sm text-muted">Experience, education, and custom sections are edited in the builder for now. The profile fields above are the reusable core, and the full profile copy is preserved when a draft is loaded.</p>
+      {message && <p className="mt-4 text-ink">{message}</p>}
+      <p className="mt-4"><a className="brand-link" href="/dashboard">Back to the dashboard</a></p>
+      </RequireAuth>
     </main>
   );
 }
