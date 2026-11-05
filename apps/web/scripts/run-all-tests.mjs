@@ -3,7 +3,7 @@
 // Runs every test suite in order: template engine, builder, import,
 // auth, writer, packs, billing, admin, AI provider, LinkedIn import,
 // database, session, session client, auth simplified, design system,
-// and the end to end smoke test. Reports pass and fail counts per
+// human help, and the end to end smoke test. Reports pass and fail counts per
 // non zero on any failure. No test output file, database, payment,
 // or live service is used here.
 
@@ -31,6 +31,7 @@ const suites = [
   { name: "session client", command: process.execPath, args: ["scripts/test-session-client.mjs"], cwd: webDir },
   { name: "auth simplified", command: process.execPath, args: ["scripts/test-auth-simplified.mjs"], cwd: webDir },
   { name: "design system", command: process.execPath, args: ["scripts/test-design-system.mjs"], cwd: webDir },
+  { name: "human help", command: process.execPath, args: ["scripts/test-human-help.mjs"], cwd: webDir },
   { name: "end to end smoke", command: process.execPath, args: ["scripts/test-e2e-smoke.mjs"], cwd: webDir }
 ];
 
