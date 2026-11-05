@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { COUNTRY_PACKS } from "../../lib/packs-core.mjs";
 import {
   CONFIG_KINDS,
   FEATURE_FLAG_KEYS,
@@ -38,6 +39,35 @@ const KIND_LABELS: any = {
   countryPacks: "Country packs"
 };
 
+const HELP_GOAL_LABELS: any = {
+  study: "Study",
+  work: "Work",
+  business: "Business"
+};
+
+const HELP_NEED_LABELS: any = {
+  consultation: "Free consultation call",
+  review: "CV review only",
+  both: "Both"
+};
+
+function helpCountryName(slug: string) {
+  const pack = COUNTRY_PACKS.find((item: any) => item.id === slug);
+  return pack ? pack.name : slug;
+}
+
+function helpDate(value: string) {
+  try {
+    return new Date(value).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+  } catch {
+    return String(value || "");
+  }
+}
+
 function readJson(key: string) {
   try {
     const raw = window.localStorage.getItem(key);
@@ -62,6 +92,8 @@ export default function AdminPage() {
   const [audit, setAudit] = useState<any[]>(() => createAuditLog());
   const [message, setMessage] = useState("");
   const [databaseStatus, setDatabaseStatus] = useState<any>(null);
+  const [helpRequests, setHelpRequests] = useState<any[] | null>(null);
+  const [helpRequestsNote, setHelpRequestsNote] = useState("");
   const [versions, setVersions] = useState<any>({ templates: "", prompts: "", countryPacks: "" });
   const [summaries, setSummaries] = useState<any>({ templates: "", prompts: "", countryPacks: "" });
   const [reason, setReason] = useState("");
@@ -71,6 +103,22 @@ export default function AdminPage() {
       .then((response) => response.json())
       .then((data) => setDatabaseStatus(data))
       .catch(() => setDatabaseStatus(null));
+    fetch("/api/human-help")
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 501) {
+          setHelpRequestsNote(
+            data.message || "Human help requests need a connected database."
+          );
+          return;
+        }
+        if (!response.ok) {
+          setHelpRequestsNote(data.error || "Human help requests could not be read.");
+          return;
+        }
+        setHelpRequests(Array.isArray(data.requests) ? data.requests : []);
+      })
+      .catch(() => setHelpRequestsNote("Human help requests could not be read."));
     const storedDocuments = readJson(DOCUMENTS_KEY);
     const documents = Array.isArray(storedDocuments) ? storedDocuments : [];
     if (documents.length === 0) {
@@ -162,9 +210,11 @@ export default function AdminPage() {
     <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <h1 className="page-title">Admin</h1>
       <p className="mt-4 notice text-ink">
-        Local only admin, not a secured production admin. No real database
-        and no real admin auth are connected. Everything on this page
-        lives in this browser only, and nothing here changes a live site.
+        Local only admin, not a secured production admin. No real admin
+        auth is connected. The counts, config, flags, and audit entries
+        on this page live in this browser only, and nothing here changes
+        a live site. The human help requests below are read from the
+        database when one is connected, so NVConsult can reply to them.
       </p>
       <p className="mt-4 text-ink">
         Database: {databaseStatus ? databaseStatus.message : "Checking database status."} Server admin groundwork is in
@@ -177,10 +227,12 @@ export default function AdminPage() {
       </p>
       <p className="mt-4 text-ink">
         Counts below are aggregated only. No CV text, no user names, no
-        emails, and no document content are shown, and none are written
-        to the audit log. Every admin action needs a reason, and every
-        action is written to the local audit log with its action, time,
-        and reason.
+        emails, and no document content are shown in the counts, and none
+        are written to the audit log. The human help requests section
+        below is the exception: it shows the name and email from each
+        funnel request, because NVConsult needs them to get back to the
+        person. Every admin action needs a reason, and every action is
+        written to the local audit log with its action, time, and reason.
       </p>
       {message ? <p className="mt-4 card text-ink">{message}</p> : null}
 
@@ -222,6 +274,37 @@ export default function AdminPage() {
       ) : (
         <p className="mt-4 text-ink">Loading local counts.</p>
       )}
+
+      <h2 className="mt-10 section-title">Human help requests</h2>
+      <p className="mt-2 text-ink">
+        Requests from the human help funnel, newest first. Each entry shows name, email, country,
+        goal, need, message, and date, and nothing else.
+      </p>
+      {helpRequestsNote ? <p className="mt-4 text-ink">{helpRequestsNote}</p> : null}
+      {helpRequests === null && !helpRequestsNote ? (
+        <p className="mt-4 text-ink">Loading human help requests.</p>
+      ) : null}
+      {helpRequests !== null && helpRequests.length === 0 ? (
+        <p className="mt-4 text-ink">No human help requests yet.</p>
+      ) : null}
+      {helpRequests !== null && helpRequests.length > 0 ? (
+        <ul className="mt-4 space-y-3">
+          {helpRequests.map((entry: any) => (
+            <li key={entry.id} className="card text-sm text-ink">
+              <p>
+                <span className="font-semibold">{entry.name}</span> ({entry.email})
+              </p>
+              <p>
+                Country: {helpCountryName(entry.country)} | Goal:{" "}
+                {HELP_GOAL_LABELS[entry.goal] || entry.goal} | Need:{" "}
+                {HELP_NEED_LABELS[entry.need] || entry.need}
+              </p>
+              {entry.message ? <p>Message: {entry.message}</p> : null}
+              <p>{helpDate(entry.createdAt)}</p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       <h2 className="mt-10 section-title">Versioning, local config only</h2>
       <p className="mt-2 text-ink">
