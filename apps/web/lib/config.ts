@@ -39,7 +39,7 @@ const editionConfigs: Record<Edition, EditionConfig> = {
     edition: "nvconsult",
     brandName: "NVConsult CV Builder",
     shortName: "NVConsult",
-    tagline: "Build a CV that fits your target country, with human help when you need it.",
+    tagline: "Build a CV or resume that fits your target country, with human help when you need it.",
     headerHelpLabel: "Get human help",
     headerHelpHref: "https://nvconsult.eu",
     dashboardIntro: "This is the NVConsult edition. Start with the free tier, then ask for a human check before you apply.",
