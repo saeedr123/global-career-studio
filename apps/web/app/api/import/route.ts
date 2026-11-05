@@ -12,8 +12,9 @@ import { parseFileImport } from "../../../lib/builder-core.mjs";
 // becomes a draft here. The builder page only applies the import after
 // the user checks and corrects it. A file with no readable text, for
 // example a scanned image PDF, is reported as empty, with no content
-// invented. LinkedIn import is not in this increment. The working
-// fallback is guided paste import on the builder page.
+// invented. LinkedIn export import is a separate route at
+// app/api/linkedin-import/route.ts, with the same correction step
+// on the builder page. LinkedIn API import is not built.
 
 export const runtime = "nodejs";
 const MAX_BYTES = 5 * 1024 * 1024;
