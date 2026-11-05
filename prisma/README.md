@@ -1,3 +1,17 @@
+# Prisma (Phase 2 increment 12)
+
+This folder holds the Prisma schema only. No migration has been run yet,
+and no database is connected. In increment 12, a GitHub Actions
+workflow was added at .github/workflows/prisma-validate.yml to run
+prisma validate, prisma generate, and prisma db push against an
+ephemeral Postgres service container on GitHub. That workflow is
+pushed, and its first CI run is pending on GitHub, NOT claimed as
+passed, because this environment cannot run GitHub Actions or check
+a run status. The provider was NOT changed to SQLite, checksums were
+NOT ignored, and no migration was run against any real database.
+Do NOT treat the schema as officially validated until a CI run
+result is read on GitHub.
+
 # Prisma (Phase 2 increment 11)
 
 This folder holds the Prisma schema only. No migration has been run yet,
