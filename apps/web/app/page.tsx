@@ -28,7 +28,7 @@ const FEATURED_PACKS = COUNTRY_PACKS.slice(0, 4).map((pack: any) => pack.name);
 export default function Home() {
   const isNvconsult = editionConfig.edition === "nvconsult";
   const heroHeadline = isNvconsult
-    ? "Your CV, built for the country you are applying to."
+    ? "Your CV or resume, built for the country you are applying to."
     : editionConfig.tagline;
   const heroLead = isNvconsult
     ? "Start free in the builder, export a PDF, and ask NVConsult for a human check before you apply."
