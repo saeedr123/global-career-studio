@@ -15,6 +15,7 @@ import {
   rollbackConfig,
   setFeatureFlag
 } from "../../lib/admin-core.mjs";
+import { readServerSession, serverHeaders } from "../../lib/session-client.mjs";
 
 // Admin page, Phase 2 increment 10, local only.
 // This page is NOT a secured production admin. No real database and
@@ -103,9 +104,16 @@ export default function AdminPage() {
       .then((response) => response.json())
       .then((data) => setDatabaseStatus(data))
       .catch(() => setDatabaseStatus(null));
-    fetch("/api/human-help")
+    // The list needs a signed in admin session, checked on the server.
+    const session = readServerSession(window.localStorage);
+    const helpHeaders: Record<string, string> = session ? serverHeaders(session) : {};
+    fetch("/api/human-help", { headers: helpHeaders })
       .then(async (response) => {
         const data = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          setHelpRequestsNote(data.error || "Sign in with an admin account to see human help requests.");
+          return;
+        }
         if (response.status === 501) {
           setHelpRequestsNote(
             data.message || "Human help requests need a connected database."

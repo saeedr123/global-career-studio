@@ -26,7 +26,7 @@
 // passwordHash, and no function returns it. Audit entries never
 // contain CV text, names, emails, or secrets.
 
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { COUNTRY_PACKS } from "./packs-core.mjs";
 
 export const EDITIONS = ["nvconsult", "commercial"];
@@ -164,22 +164,40 @@ export async function getUserById(client, id) {
   return publicUser(found);
 }
 
-// Server password handling. The local browser auth in
-// lib/auth-core.mjs keeps salt and passwordHash in separate fields,
-// but the Prisma User row has only one passwordHash column, so the
-// server stores the two parts together as "salt:hash", with the
-// salt as random hex and the hash as SHA-256 of "salt:password".
-// The stored value is still only a hash, never a plain password.
-// verifyServerPassword accepts that form, and also a bare hex hash
-// with no salt, so an older row is not silently locked out, it is
-// checked against the same SHA-256 of the password alone.
+// Server password handling, hardened 2026-11-05. New passwords are
+// stored with scrypt, a slow, memory hard key derivation function
+// built into Node, in the form "scrypt$N$r$p$salt$hash". A single
+// SHA-256 round, used before, is fast enough to brute force if the
+// database ever leaked, so it is only accepted for old rows: the
+// "salt:hash" form and a bare unsalted hex hash still verify, so no
+// earlier account is locked out, and passwordNeedsRehash tells the
+// login route to replace such a row with scrypt on the next
+// successful sign in. Every comparison is constant time.
+const SCRYPT_N = 16384;
+const SCRYPT_R = 8;
+const SCRYPT_P = 1;
+const SCRYPT_KEYLEN = 64;
+
+function scryptHex(password, salt, n, r, p) {
+  return scryptSync(String(password), salt, SCRYPT_KEYLEN, { N: n, r, p, maxmem: 64 * 1024 * 1024 }).toString("hex");
+}
+
+function sameHex(a, b) {
+  const left = Buffer.from(String(a), "hex");
+  const right = Buffer.from(String(b), "hex");
+  if (left.length === 0 || left.length !== right.length) {
+    return false;
+  }
+  return timingSafeEqual(left, right);
+}
+
 export function hashServerPassword(password, salt) {
   if (!password || String(password).length < 8) {
     throw new Error("The password must be at least 8 characters.");
   }
   const useSalt = salt || randomBytes(16).toString("hex");
-  const hash = createHash("sha256").update(`${useSalt}:${String(password)}`).digest("hex");
-  return { salt: useSalt, passwordHash: `${useSalt}:${hash}` };
+  const hash = scryptHex(password, useSalt, SCRYPT_N, SCRYPT_R, SCRYPT_P);
+  return { salt: useSalt, passwordHash: `scrypt$${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$${useSalt}$${hash}` };
 }
 
 export function verifyServerPassword(password, storedHash) {
@@ -187,12 +205,56 @@ export function verifyServerPassword(password, storedHash) {
     return false;
   }
   const stored = String(storedHash);
-  if (stored.includes(":")) {
-    const [salt] = stored.split(":");
-    return hashServerPassword(password, salt).passwordHash === stored;
+  if (stored.startsWith("scrypt$")) {
+    const parts = stored.split("$");
+    if (parts.length !== 6) {
+      return false;
+    }
+    const [, n, r, p, salt, hash] = parts;
+    try {
+      return sameHex(scryptHex(password, salt, Number(n), Number(r), Number(p)), hash);
+    } catch {
+      return false;
+    }
   }
-  const hash = createHash("sha256").update(String(password)).digest("hex");
-  return hash === stored;
+  if (stored.includes(":")) {
+    const [salt, hash] = stored.split(":");
+    const candidate = createHash("sha256").update(`${salt}:${String(password)}`).digest("hex");
+    return sameHex(candidate, hash);
+  }
+  const candidate = createHash("sha256").update(String(password)).digest("hex");
+  return sameHex(candidate, stored);
+}
+
+// True when a stored hash uses an old SHA-256 form, so the login
+// route should store a fresh scrypt hash after a successful sign in.
+export function passwordNeedsRehash(storedHash) {
+  return !String(storedHash || "").startsWith("scrypt$");
+}
+
+export async function updateUserPasswordHash(client, userId, passwordHash) {
+  requireClient(client);
+  if (!userId || !passwordHash) {
+    throw new Error("A user id and a password hash are required.");
+  }
+  await client.user.update({ where: { id: String(userId) }, data: { passwordHash: String(passwordHash) } });
+  return true;
+}
+
+// Admin check for a server route. Reads the Bearer session token,
+// loads the session user, and requires the admin role. Returns the
+// public admin user, or null when the caller is not a signed in
+// admin, so the route can answer 401 without saying why.
+export async function getAdminFromToken(client, token) {
+  requireClient(client);
+  if (!token) {
+    return null;
+  }
+  const user = await getSessionUser(client, token);
+  if (!user || user.role !== "admin") {
+    return null;
+  }
+  return user;
 }
 
 // Returns the full user row, including passwordHash. This is for

@@ -144,7 +144,7 @@ await check("session expiry is 24 hours after creation", async () => {
 
 await check("hashServerPassword and verifyServerPassword round trip, wrong password fails", async () => {
   const hashed = hashServerPassword("SAMPLE-password-1");
-  assert.equal(hashed.passwordHash.includes(":"), true);
+  assert.equal(hashed.passwordHash.startsWith("scrypt$"), true);
   assert.equal(verifyServerPassword("SAMPLE-password-1", hashed.passwordHash), true);
   assert.equal(verifyServerPassword("wrong-password", hashed.passwordHash), false);
   assert.equal(verifyServerPassword("SAMPLE-password-1", ""), false);

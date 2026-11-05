@@ -27,6 +27,24 @@ const nextConfig = {
       ];
     }
     return config;
+  },
+  // Security headers, 2026-11-05. No full content security policy
+  // yet, because Next.js inline scripts would need nonces; the
+  // frame-ancestors rule alone stops other sites from framing the
+  // app. /admin is also kept out of search results.
+  async headers() {
+    const security = [
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" }
+    ];
+    return [
+      { source: "/:path*", headers: security },
+      { source: "/admin", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] }
+    ];
   }
 };
 export default nextConfig;
