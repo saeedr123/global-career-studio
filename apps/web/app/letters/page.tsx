@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { parseDraft } from "../../lib/builder-core.mjs";
 import { LETTER_TYPES, generateLetter } from "../../lib/writer-core.mjs";
 import { canExportLetter, effectivePlan, isLetterTypeAllowed, lockMessage } from "../../lib/billing-core.mjs";
+import RequireAuth from "../components/RequireAuth";
 
 // Letter studio, Phase 2 increment 7, local drafts only.
 // Letters use only fields the user supplied. Optional fields not
@@ -123,58 +124,60 @@ export default function LettersPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Letter studio, local drafts only</p>
-      <h1 className="mt-2 text-3xl font-bold text-navy">Letter studio</h1>
-      <p className="mt-3 text-slate-700">Choose a letter type, fill in only what is true, and check the generated text before you use it. Bracket placeholders mean a field still needs filling in, not a guessed value.</p>
-      <p className="mt-4 rounded border border-slate-300 bg-white p-4">
+      <RequireAuth>
+      <p className="eyebrow">Letter studio, local drafts only</p>
+      <h1 className="page-title">Letter studio</h1>
+      <p className="mt-3 text-ink">Choose a letter type, fill in only what is true, and check the generated text before you use it. Bracket placeholders mean a field still needs filling in, not a guessed value.</p>
+      <p className="mt-4 card">
         Current local plan: {subscriptionPlan === "trial" ? `Trial, ends ${subscriptionTrialEnd || "date not set"}` : subscriptionPlan}. Entitlements are local browser state only, until a real database and Stripe are connected. No checkout or payment is shown here.
         {!isLetterTypeAllowed(subscriptionPlan, typeId) && (
           <span className="mt-2 block"> {lockMessage("letter")} A letter you already created stays viewable here.</span>
         )}
         {subscriptionPlan === "free" && (
-          <span className="mt-2 block"> DOCX export is a premium export on Free. Standard PDF export is included on Free. <a className="text-blue-700 underline" href="/subscription">Open the subscription page</a></span>
+          <span className="mt-2 block"> DOCX export is a premium export on Free. Standard PDF export is included on Free. <a className="brand-link" href="/subscription">Open the subscription page</a></span>
         )}
       </p>
 
-      <section className="mt-6 rounded border border-slate-200 bg-white p-4">
+      <section className="mt-6 card">
         <label className="block text-sm">Letter type
-          <select className="mt-1 block w-full rounded border p-2" value={typeId} onChange={(event) => setTypeId(event.target.value)}>
+          <select className="mt-1 input-field" value={typeId} onChange={(event) => setTypeId(event.target.value)}>
             {LETTER_TYPES.map((type: any) => (
               <option key={type.id} value={type.id}>{type.name}: {type.description}{isLetterTypeAllowed(subscriptionPlan, type.id) ? "" : " (Premium, locked on Free)"}</option>
             ))}
           </select>
         </label>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block text-sm">Full name<input className="mt-1 w-full rounded border p-2" value={fields.fullName} onChange={(event) => updateField("fullName", event.target.value)} /></label>
-          <label className="block text-sm">Headline<input className="mt-1 w-full rounded border p-2" value={fields.headline} onChange={(event) => updateField("headline", event.target.value)} /></label>
-          <label className="block text-sm">Job title<input className="mt-1 w-full rounded border p-2" value={fields.jobTitle} onChange={(event) => updateField("jobTitle", event.target.value)} /></label>
-          <label className="block text-sm">Company<input className="mt-1 w-full rounded border p-2" value={fields.company} onChange={(event) => updateField("company", event.target.value)} /></label>
-          <label className="block text-sm">Recipient name, optional<input className="mt-1 w-full rounded border p-2" value={fields.recipientName} onChange={(event) => updateField("recipientName", event.target.value)} /></label>
-          <label className="block text-sm">Sender name, optional<input className="mt-1 w-full rounded border p-2" value={fields.senderName} onChange={(event) => updateField("senderName", event.target.value)} /></label>
-          <label className="block text-sm">Date, optional<input className="mt-1 w-full rounded border p-2" value={fields.date} onChange={(event) => updateField("date", event.target.value)} /></label>
-          <label className="block text-sm">Last working day, for resignation only<input className="mt-1 w-full rounded border p-2" value={fields.lastWorkingDay} onChange={(event) => updateField("lastWorkingDay", event.target.value)} /></label>
+          <label className="block text-sm">Full name<input className="mt-1 input-field" value={fields.fullName} onChange={(event) => updateField("fullName", event.target.value)} /></label>
+          <label className="block text-sm">Headline<input className="mt-1 input-field" value={fields.headline} onChange={(event) => updateField("headline", event.target.value)} /></label>
+          <label className="block text-sm">Job title<input className="mt-1 input-field" value={fields.jobTitle} onChange={(event) => updateField("jobTitle", event.target.value)} /></label>
+          <label className="block text-sm">Company<input className="mt-1 input-field" value={fields.company} onChange={(event) => updateField("company", event.target.value)} /></label>
+          <label className="block text-sm">Recipient name, optional<input className="mt-1 input-field" value={fields.recipientName} onChange={(event) => updateField("recipientName", event.target.value)} /></label>
+          <label className="block text-sm">Sender name, optional<input className="mt-1 input-field" value={fields.senderName} onChange={(event) => updateField("senderName", event.target.value)} /></label>
+          <label className="block text-sm">Date, optional<input className="mt-1 input-field" value={fields.date} onChange={(event) => updateField("date", event.target.value)} /></label>
+          <label className="block text-sm">Last working day, for resignation only<input className="mt-1 input-field" value={fields.lastWorkingDay} onChange={(event) => updateField("lastWorkingDay", event.target.value)} /></label>
         </div>
         <label className="mt-3 block text-sm">Summary, used by motivation, LinkedIn About, and personal statement
-          <textarea className="mt-1 block w-full rounded border p-2" rows={3} value={fields.summary} onChange={(event) => updateField("summary", event.target.value)} />
+          <textarea className="mt-1 input-field" rows={3} value={fields.summary} onChange={(event) => updateField("summary", event.target.value)} />
         </label>
-        <button type="button" className="mt-4 rounded bg-navy px-4 py-2 text-white" onClick={handleGenerate}>Generate letter</button>
+        <button type="button" className="mt-4 btn-primary" onClick={handleGenerate}>Generate letter</button>
       </section>
 
       {letterText && (
-        <section className="mt-6 rounded border border-slate-200 bg-white p-4">
+        <section className="mt-6 card">
           <h2 className="font-semibold">{letterTitle}, editable</h2>
-          <textarea className="mt-3 block w-full rounded border p-2" rows={14} value={letterText} onChange={(event) => setLetterText(event.target.value)} />
+          <textarea className="mt-3 block w-full input-field" rows={14} value={letterText} onChange={(event) => setLetterText(event.target.value)} />
           <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={handleSave}>Save letter locally</button>
-            <button type="button" className="rounded bg-navy px-3 py-2 text-white" onClick={() => handleExport("pdf")}>Export PDF</button>
-            <button type="button" className="rounded bg-navy px-3 py-2 text-white" onClick={() => handleExport("docx")}>Export DOCX</button>
+            <button type="button" className="btn-secondary" onClick={handleSave}>Save letter locally</button>
+            <button type="button" className="btn-secondary" onClick={() => handleExport("pdf")}>Export PDF</button>
+            <button type="button" className="btn-secondary" onClick={() => handleExport("docx")}>Export DOCX</button>
           </div>
-          <p className="mt-3 text-sm text-slate-500">Reference and recommendation letters must be checked and signed by the sender before use. Employment verification letters state no dates or duties that were not supplied.</p>
+          <p className="mt-3 text-sm text-muted">Reference and recommendation letters must be checked and signed by the sender before use. Employment verification letters state no dates or duties that were not supplied.</p>
         </section>
       )}
 
-      {message && <p className="mt-4 text-slate-800">{message}</p>}
-      <p className="mt-4"><a className="text-blue-700 underline" href="/builder">Back to the builder</a> | <a className="ml-2 text-blue-700 underline" href="/writer">Local writer</a> | <a className="ml-2 text-blue-700 underline" href="/ats">ATS check</a></p>
+      {message && <p className="mt-4 text-ink">{message}</p>}
+      <p className="mt-4"><a className="brand-link" href="/builder">Back to the builder</a> | <a className="ml-2 brand-link" href="/writer">Local writer</a> | <a className="ml-2 brand-link" href="/ats">ATS check</a></p>
+      </RequireAuth>
     </main>
   );
 }
