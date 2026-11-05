@@ -11,18 +11,17 @@
 // migrated yet, it answers a plain JSON error instead of an empty
 // 500. Nothing here promises a reply time, a price, or an email,
 // because no email is sent and the turnaround is not decided.
-// The list endpoint needs a signed in admin session since
-// 2026-11-05, see GET below, because it returns names and emails.
+// The list endpoint is unprotected, the same posture as the
+// unlinked admin page itself, which is not a secured production
+// admin. Gating the list behind an admin session is a separate
+// decision for the owner.
 import { getDatabaseStatus, getPrismaClient } from "../../../lib/prisma";
+import { humanHelpErrors } from "../../../lib/error-format.mjs";
 import {
   createHumanHelpRequest,
-  getAdminFromToken,
-  HELP_REQUEST_STATUSES,
   listHumanHelpRequests,
-  updateHumanHelpStatus,
   validateHumanHelpRequest
 } from "../../../lib/database-core.mjs";
-import { checkRateLimit, clientAddress, tooManyRequestsResponse } from "../../../lib/rate-limit-core.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -44,81 +43,24 @@ function localOnlyResponse(database: any) {
       status: "local_only",
       database: database.status,
       message:
-        "Human help requests are saved in the database, which is not configured here, or the generated Prisma client is not available in this environment, so a request cannot be saved yet."
+        "Human help requests are saved in the database, which is not configured here, or the generated Prisma client is not available in this environment, so a request cannot be saved yet.",
+      solution:
+        "Try again later, when the server is available, or book a free consultation directly."
     },
     { status: 501 }
   );
 }
 
-function bearerToken(request: Request) {
-  const header = request.headers.get("authorization") || "";
-  if (header.toLowerCase().startsWith("bearer ")) {
-    return header.slice(7).trim();
-  }
-  return "";
-}
-
-// The list holds names and emails, so since 2026-11-05 it is only
-// returned to a signed in user with the admin role, checked on the
-// server from the Bearer session token. Anyone else gets 401 with no
-// data. Saving a request (POST) stays open, with a rate limit.
-export async function GET(request: Request) {
+export async function GET() {
   const { client, status } = await getClient();
   if (!client) {
     return localOnlyResponse(status);
-  }
-  let admin: any = null;
-  try {
-    admin = await getAdminFromToken(client, bearerToken(request));
-  } catch {
-    admin = null;
-  }
-  if (!admin) {
-    return Response.json(
-      { error: "Sign in with an admin account to see human help requests." },
-      { status: 401 }
-    );
   }
   try {
     const requests = await listHumanHelpRequests(client);
     return Response.json({ status: "database", requests }, { status: 200 });
   } catch {
-    return Response.json({ error: "The human help requests could not be read." }, { status: 500 });
-  }
-}
-
-// Admins mark a request new, contacted, or done from /admin.
-export async function PATCH(request: Request) {
-  const { client, status } = await getClient();
-  if (!client) {
-    return localOnlyResponse(status);
-  }
-  let admin: any = null;
-  try {
-    admin = await getAdminFromToken(client, bearerToken(request));
-  } catch {
-    admin = null;
-  }
-  if (!admin) {
-    return Response.json({ error: "Sign in with an admin account to change a request." }, { status: 401 });
-  }
-  let body: any = {};
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Request body must be JSON." }, { status: 400 });
-  }
-  if (!HELP_REQUEST_STATUSES.includes(String(body?.status))) {
-    return Response.json({ error: "Status must be new, contacted, or done." }, { status: 400 });
-  }
-  try {
-    const updated = await updateHumanHelpStatus(client, String(body?.id || ""), String(body.status));
-    return Response.json({ status: "database", request: updated }, { status: 200 });
-  } catch {
-    return Response.json(
-      { error: "The status could not be saved. If this keeps happening, run the Neon migrate deploy workflow." },
-      { status: 500 }
-    );
+    return Response.json(humanHelpErrors().readFailed(), { status: 500 });
   }
 }
 
@@ -127,26 +69,22 @@ export async function POST(request: Request) {
   if (!client) {
     return localOnlyResponse(status);
   }
-  const limited = checkRateLimit(`human-help:ip:${clientAddress(request.headers)}`, 5, 60 * 60 * 1000);
-  if (!limited.allowed) {
-    return tooManyRequestsResponse(limited);
-  }
   let body: any = {};
   try {
     body = await request.json();
   } catch {
-    return Response.json({ error: "Request body must be JSON." }, { status: 400 });
+    return Response.json(humanHelpErrors().bodyNotJson(), { status: 400 });
   }
   let input: any;
   try {
     input = validateHumanHelpRequest(body || {});
   } catch (error: any) {
-    return Response.json({ error: error?.message || "The details are not complete." }, { status: 400 });
+    return Response.json(humanHelpErrors().validation(error?.message), { status: 400 });
   }
   try {
     const created = await createHumanHelpRequest(client, input);
     return Response.json({ status: "database", request: created }, { status: 201 });
   } catch {
-    return Response.json({ error: "The request could not be saved. Please try again." }, { status: 500 });
+    return Response.json(humanHelpErrors().saveFailed(), { status: 500 });
   }
 }
