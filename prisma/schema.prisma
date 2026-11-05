@@ -340,6 +340,28 @@ model HumanReviewRequest {
   createdAt     DateTime          @default(now())
 }
 
+// Human help funnel requests, Phase 2 increment 19. A visitor who
+// asks for human help through the /human-help funnel, with no
+// account and no sign-in required. Country is the country pack slug
+// as written, goal is study, work, or business, need is
+// consultation, review, or both. No reply time, price, or email is
+// promised on a request, because no email is sent and the
+// turnaround is not decided. Ali reads the requests on the admin
+// page, newest first.
+model HumanHelpRequest {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  country   String
+  goal      String
+  need      String
+  message   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([email])
+}
+
 model Template {
   id                String   @id @default(uuid())
   slug              String   @unique
