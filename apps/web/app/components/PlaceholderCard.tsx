@@ -13,12 +13,12 @@ export default function PlaceholderCard({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4">
+    <section className="card">
       <h2 className="text-base font-semibold text-navy">{title}</h2>
-      <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-amber-700">
+      <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted">
         Placeholder only
       </p>
-      <div className="mt-3 text-sm text-slate-700">{children}</div>
+      <div className="mt-3 text-sm text-ink">{children}</div>
     </section>
   );
 }
