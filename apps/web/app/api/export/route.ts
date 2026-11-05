@@ -5,6 +5,7 @@ import {
   renderPdf
 } from "@global-career-studio/template-engine";
 import { canExportDocument } from "../../../lib/billing-core.mjs";
+import { exportErrors } from "../../../lib/error-format.mjs";
 
 // Export API, Phase 2 increment 3.
 // Uses the real template engine, not a screenshot or a placeholder file.
@@ -33,16 +34,17 @@ function isTemplate(value: unknown): value is TemplateId {
 }
 
 export async function POST(request: Request) {
+  const errors = exportErrors();
   try {
     const body = await request.json();
     const profile = body?.profile;
     const settings = body?.settings;
     const format = body?.format;
     if (!profile || !settings || !isTemplate(settings.templateId)) {
-      return NextResponse.json({ error: "Profile and a valid template are required." }, { status: 400 });
+      return NextResponse.json(errors.invalid(), { status: 400 });
     }
     if (format !== "pdf" && format !== "docx") {
-      return NextResponse.json({ error: "Format must be pdf or docx." }, { status: 400 });
+      return NextResponse.json(errors.format(), { status: 400 });
     }
     if (typeof body?.subscriptionPlan === "string") {
       const entitlement = canExportDocument({
@@ -52,12 +54,14 @@ export async function POST(request: Request) {
         existingDocument: Boolean(body.existingDocument)
       });
       if (!entitlement.allowed) {
-        return NextResponse.json({ error: entitlement.reason }, { status: 403 });
+        return NextResponse.json(errors.notAllowed(entitlement.reason), { status: 403 });
       }
     }
+    // The profile is passed through as it is. A sample marker stays
+    // only on a genuinely sample document, so a real draft exports
+    // with no sample text at all. Nothing here forces a SAMPLE label.
     const engineProfile = {
-      ...profile,
-      sampleMarker: "SAMPLE" as const
+      ...profile
     };
     const rendered = renderDocument(engineProfile, settings.templateId, {
       paperSize: settings.paperSize === "US_LETTER" ? "US_LETTER" : "A4",
@@ -84,10 +88,8 @@ export async function POST(request: Request) {
   } catch (error) {
     // Server log only. The client response stays plain language, with
     // no system details, so a failure never leaks internals to a user.
+    // The error carries a solution, and the draft was not changed.
     console.error("Export failed", error);
-    return NextResponse.json(
-      { error: "Export failed. Your draft was not changed. Please try again." },
-      { status: 500 }
-    );
+    return NextResponse.json(errors.failed(), { status: 500 });
   }
 }
