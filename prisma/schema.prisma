@@ -137,9 +137,28 @@ model User {
   aiUsageLogs        AIUsageLog[]
   humanReviewRequests HumanReviewRequest[]
   adminAuditLogs     AdminAuditLog[]
+  sessions           Session[]
 
   @@index([email])
   @@index([edition])
+}
+
+// Server sessions, Phase 2 increment 14. A session row stores only
+// a hash of the token, never the plain token, so a leaked database
+// row cannot be used to sign in as that user. The plain token is
+// returned once, at session creation, and the caller must send it
+// back as a Bearer token. Sessions expire after 24 hours by
+// default, and are deleted with the user (cascade). A session is
+// revoked by deleting its row. See apps/web/lib/database-core.mjs.
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Profile {
