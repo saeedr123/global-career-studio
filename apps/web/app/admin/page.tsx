@@ -61,11 +61,16 @@ export default function AdminPage() {
   const [flags, setFlags] = useState<any>(() => createFeatureFlags());
   const [audit, setAudit] = useState<any[]>(() => createAuditLog());
   const [message, setMessage] = useState("");
+  const [databaseStatus, setDatabaseStatus] = useState<any>(null);
   const [versions, setVersions] = useState<any>({ templates: "", prompts: "", countryPacks: "" });
   const [summaries, setSummaries] = useState<any>({ templates: "", prompts: "", countryPacks: "" });
   const [reason, setReason] = useState("");
 
   useEffect(() => {
+    fetch("/api/database-status")
+      .then((response) => response.json())
+      .then((data) => setDatabaseStatus(data))
+      .catch(() => setDatabaseStatus(null));
     const storedDocuments = readJson(DOCUMENTS_KEY);
     const documents = Array.isArray(storedDocuments) ? storedDocuments : [];
     if (documents.length === 0) {
@@ -160,6 +165,13 @@ export default function AdminPage() {
         Local only admin, not a secured production admin. No real database
         and no real admin auth are connected. Everything on this page
         lives in this browser only, and nothing here changes a live site.
+      </p>
+      <p className="mt-4 text-slate-700">
+        Database: {databaseStatus ? databaseStatus.message : "Checking database status."} Server admin groundwork is in
+        place in the data layer, with an admin role check, a required
+        reason, and an audit row for every server admin action, but it
+        stays inactive until a database is connected and the caller is a
+        real admin user.
       </p>
       <p className="mt-4 text-slate-700">
         Counts below are aggregated only. No CV text, no user names, no
