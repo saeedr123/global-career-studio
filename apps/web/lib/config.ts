@@ -40,11 +40,11 @@ const editionConfigs: Record<Edition, EditionConfig> = {
     shortName: "NVConsult",
     tagline: "Build a CV or resume that fits your target country, with human help when you need it.",
     headerHelpLabel: "Get human help",
-    headerHelpHref: "https://nvconsult.eu",
+    headerHelpHref: "/human-help",
     dashboardIntro: "This is the NVConsult edition. Start with the free tier, then ask for a human check before you apply.",
-    humanHelpNote: "Human review is offered through NVConsult. Ask for it through the free consultation, and it is arranged personally after the call. No payment is taken in this app.",
+    humanHelpNote: "Human review is offered through NVConsult. Ask for it through the human help form, with a free consultation or on its own. No payment is taken in this app.",
     footerHelpLabel: "Free consultation",
-    footerHelpHref: "https://nvconsult.eu",
+    footerHelpHref: "/human-help",
     footerNote: "Free beta. No payment is taken in this app."
   },
   commercial: {
@@ -53,11 +53,11 @@ const editionConfigs: Record<Edition, EditionConfig> = {
     shortName: "Studio",
     tagline: "Build a clear, honest career document, one section at a time.",
     headerHelpLabel: "Need human help?",
-    headerHelpHref: "https://nvconsult.eu",
+    headerHelpHref: "/human-help",
     dashboardIntro: "This is the commercial edition. Start with the free tier, and upgrade only when premium features are needed.",
-    humanHelpNote: "Human help is offered through NVConsult. Ask for it through the free consultation linked in the header. No payment is taken in this app.",
+    humanHelpNote: "Human help is offered through NVConsult. Ask for it through the human help form linked in the header. No payment is taken in this app.",
     footerHelpLabel: "Need human help?",
-    footerHelpHref: "https://nvconsult.eu",
+    footerHelpHref: "/human-help",
     footerNote: "Free beta. No payment is taken in this app."
   }
 };
