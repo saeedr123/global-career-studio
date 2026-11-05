@@ -550,6 +550,19 @@ export async function getDocumentForUser(client, userId, documentId) {
   return found;
 }
 
+export async function deleteDocumentRecord(client, userId, documentId) {
+  requireClient(client);
+  const found = await getDocumentForUser(client, userId, documentId);
+  if (!found) {
+    return { deleted: false };
+  }
+  await client.document.update({
+    where: { id: String(documentId) },
+    data: { deletedAt: new Date() }
+  });
+  return { deleted: true };
+}
+
 export async function createDocumentVersion(client, userId, documentId, label, snapshot, createdBy) {
   requireClient(client);
   await getDocumentForUser(client, userId, documentId);
