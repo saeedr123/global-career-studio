@@ -19,11 +19,14 @@ export const AUTH_PATH = "/api/auth";
 export const PROFILE_PATH = "/api/profile";
 export const DOCUMENTS_PATH = "/api/documents";
 
-function fail(message, code, status) {
+function fail(message, code, status, solution) {
   const error = new Error(message);
   error.code = code || "server_error";
   if (status) {
     error.status = status;
+  }
+  if (solution) {
+    error.solution = solution;
   }
   return error;
 }
@@ -54,7 +57,12 @@ async function callJson(fetchImpl, path, options) {
     );
   }
   if (!response.ok) {
-    throw fail(data.error || "The server request failed.", "server_error", response.status);
+    throw fail(
+      data.error || "The server request failed.",
+      "server_error",
+      response.status,
+      data.solution || ""
+    );
   }
   return data;
 }
