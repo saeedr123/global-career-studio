@@ -55,10 +55,13 @@ sets a budget cap. No budget cap has been set yet.
   a dummy test database URL, and runs prisma db push against a
   Postgres service container in the same workflow, ephemeral test
   database only. The workflow YAML was parsed locally and passed.
-  The workflow is pushed to GitHub and its first CI run is
-  pending on GitHub, because this environment cannot run GitHub
-  Actions or check a run status. The CI run is NOT claimed as
-  passed. The schema provider was NOT changed to SQLite, and no
+  BLOCKED UPLOAD IN THIS INCREMENT: the workflow file was NOT
+  pushed to GitHub. The helper returned status 403, Resource not
+  accessible by personal access token, for
+  .github/workflows/prisma-validate.yml, while other increment 12
+  files uploaded with 200 and 201. No CI run can start until that
+  file reaches GitHub. The CI run is NOT claimed as passed, and no
+  CI run is pending, because the file is not on GitHub yet. The schema provider was NOT changed to SQLite, and no
   migration was run against any real database.
 - AI provider abstraction, increment 11, provider finalized, live
   call not faked: provider logic in `lib/ai-provider-core.mjs`,
