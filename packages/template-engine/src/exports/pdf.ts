@@ -97,7 +97,9 @@ export function renderPdf(doc: RenderedDocument): Promise<Buffer> {
     const navy = "#16294d";
     const accent = `#${doc.template.accentColor}`;
     const template = doc.template;
-    const contactLine = `SAMPLE: ${doc.profile.email} | ${doc.profile.phone} | ${doc.profile.city}`;
+    const contactLine = doc.profile.sampleMarker === "SAMPLE"
+      ? `SAMPLE: ${doc.profile.email} | ${doc.profile.phone} | ${doc.profile.city}`
+      : `${doc.profile.email} | ${doc.profile.phone} | ${doc.profile.city}`;
 
     // Header, per template style.
     if (template.headerStyle === "band") {
@@ -146,7 +148,7 @@ export function renderPdf(doc: RenderedDocument): Promise<Buffer> {
       pdf.text(contactLine, { width: textWidth });
       pdf.moveDown(1);
     }
-    if (doc.photoIncluded) {
+    if (doc.photoIncluded && doc.profile.sampleMarker === "SAMPLE") {
       drawPhotoBox(pdf, margin, textWidth);
     }
 
