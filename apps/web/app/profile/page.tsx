@@ -8,11 +8,16 @@ import {
   profileFromDraft,
   saveDraftToProfile
 } from "../../lib/auth-core.mjs";
+import { fetchServerProfile, readServerSession, saveServerProfile } from "../../lib/session-client.mjs";
 import { createDefaultSettings, parseDraft, validateProfile } from "../../lib/builder-core.mjs";
 
-// Master profile editor, Phase 2 increment 6.
-// One profile per local account, stored in this browser only, until a
-// real database is connected. The profile uses the same fields as a
+// Master profile editor, Phase 2 increment 15.
+// One profile per account, reused across documents. When signed in
+// with a server session, the profile is loaded from and saved to
+// /api/profile, and a local copy is kept in this browser as well, so
+// the page keeps working when the server is not available. When
+// there is no server session, the profile is stored in this browser
+// only, clearly labelled. The profile uses the same fields as a
 // builder draft, so it can be reused across documents. Editing a
 // document in the builder does not change this master profile, unless
 // the user confirms a save back here or in the builder. Starting
@@ -27,23 +32,67 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(() => createEmptyProfile());
   const [message, setMessage] = useState("");
   const [missing, setMissing] = useState<string[]>([]);
+  const [serverSession, setServerSession] = useState<any>(null);
 
   useEffect(() => {
+    let localProfile: any = null;
     try {
       const saved = window.localStorage.getItem(PROFILE_KEY);
       if (saved) {
-        setProfile(JSON.parse(saved));
+        localProfile = JSON.parse(saved);
+        setProfile(localProfile);
       }
     } catch {
       setMessage("Local profile could not be restored, starting from an empty profile.");
     }
+    const session = readServerSession(window.localStorage);
+    if (session) {
+      setServerSession(session);
+      fetchServerProfile(undefined, session)
+        .then((serverProfile) => {
+          if (serverProfile) {
+            setProfile(serverProfile);
+            setMissing(validateProfile(serverProfile));
+            window.localStorage.setItem(PROFILE_KEY, JSON.stringify(serverProfile));
+            setMessage("Master profile loaded from the server. A local copy is kept in this browser as well.");
+          } else if (localProfile) {
+            setMessage("No server profile was found yet, so the local profile is shown. Save to store it on the server.");
+          }
+        })
+        .catch((error: any) => {
+          setMessage(
+            error?.code === "local_only" || error?.code === "unreachable"
+              ? "The server could not be reached, so the local profile is shown. Your changes save locally until the server is available."
+              : error?.message || "Server profile could not be loaded. The local profile is shown."
+          );
+        });
+    }
   }, []);
 
-  function saveProfile(next: any) {
+  async function saveProfile(next: any, quiet?: boolean) {
     setProfile(next);
     window.localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
     setMissing(validateProfile(next));
-    setMessage("Master profile saved locally, in this browser only.");
+    if (!serverSession) {
+      if (!quiet) {
+        setMessage("Master profile saved locally, in this browser only.");
+      }
+      return;
+    }
+    try {
+      await saveServerProfile(undefined, serverSession, next);
+      if (!quiet) {
+        setMessage("Master profile saved on the server and locally, in this browser.");
+      }
+    } catch (error: any) {
+      if (!quiet) {
+        setMessage(
+          error?.code === "local_only" || error?.code === "unreachable"
+            ? "The server could not be reached, so the master profile was saved locally only. It was not stored on the server."
+            : error?.message || "Server save failed. The master profile was saved locally only."
+        );
+      }
+    }
   }
 
   function handleSave(event: any) {
@@ -60,7 +109,7 @@ export default function ProfilePage() {
       }
       const draft = parseDraft(saved);
       const next = profileFromDraft(draft);
-      saveProfile(next);
+      saveProfile(next, true);
       setMessage("Builder draft loaded into the master profile. Check it before you use it as real history.");
     } catch {
       setMessage("Builder draft could not be loaded into the profile.");
@@ -80,7 +129,7 @@ export default function ProfilePage() {
         return;
       }
       const next = saveDraftToProfile(profile, draft.profile, true);
-      saveProfile(next);
+      saveProfile(next, true);
       setMessage("Builder draft saved back to the master profile, after your confirmation.");
     } catch {
       setMessage("Save back failed. The master profile was not changed.");
@@ -108,10 +157,10 @@ export default function ProfilePage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Master profile, local only</p>
+      <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Master profile{serverSession ? ", server and local" : ", local only"}</p>
       <h1 className="mt-2 text-3xl font-bold text-navy">Profile</h1>
       <p className="mt-3 text-slate-700">
-        One profile per account, reused across documents. This profile is stored in this browser only, until a real database is connected. It is empty by default, so nothing here is sample history. Editing a builder document does not change this profile, unless you confirm a save back.
+        One profile per account, reused across documents. {serverSession ? `Signed in on the server as ${serverSession.email}. Saving stores the profile on the server and keeps a local copy in this browser.` : "This profile is stored in this browser only, until you sign in on the server."} It is empty by default, so nothing here is sample history. Editing a builder document does not change this profile, unless you confirm a save back.
       </p>
       <form className="mt-6 space-y-3" onSubmit={handleSave}>
         <label className="block">Full name<input className="mt-1 block w-full rounded border p-2" value={profile.fullName || ""} onChange={(event) => updateField("fullName", event.target.value)} /></label>
@@ -122,7 +171,7 @@ export default function ProfilePage() {
         <label className="block">Summary<textarea className="mt-1 block w-full rounded border p-2" rows={4} value={profile.summary || ""} onChange={(event) => updateField("summary", event.target.value)} /></label>
         <label className="block">Skills, comma separated<input className="mt-1 block w-full rounded border p-2" value={(profile.skills || []).join(", ")} onChange={(event) => updateList("skills", event.target.value)} /></label>
         <label className="block">Languages, comma separated<input className="mt-1 block w-full rounded border p-2" value={(profile.languages || []).join(", ")} onChange={(event) => updateList("languages", event.target.value)} /></label>
-        <button type="submit" className="rounded bg-navy px-4 py-2 text-white">Save master profile locally</button>
+        <button type="submit" className="rounded bg-navy px-4 py-2 text-white">Save master profile{serverSession ? " on the server and locally" : " locally"}</button>
       </form>
       {missing.length > 0 && <p className="mt-3 text-slate-700">Missing for a complete profile: {missing.join(", ")}.</p>}
       <div className="mt-6 flex flex-wrap gap-2">
