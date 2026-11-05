@@ -17,6 +17,7 @@ import {
   readServerSession
 } from "../../lib/session-client.mjs";
 import { edition } from "../../lib/config";
+import RequireAuth from "../components/RequireAuth";
 
 // Working dashboard, Phase 2 increment 15, server and local documents.
 // This replaces the increment 6 local only dashboard. When signed in
@@ -168,7 +169,7 @@ export default function Dashboard() {
   }
 
   function handleDelete(id: string, label: string) {
-    if (!window.confirm(`Delete "${label}" from the local list? This does not delete a server copy, because no database is connected yet.`)) {
+    if (!window.confirm(`Delete "${label}" from the local list? This does not delete a server copy.`)) {
       setMessage("Delete cancelled. The document was not removed.");
       return;
     }
@@ -178,105 +179,107 @@ export default function Dashboard() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Dashboard{sessionMode === "server" ? ", server and local documents" : ", local drafts only"}</p>
-      <h1 className="mt-2 text-3xl font-bold text-navy">Dashboard</h1>
-      <p className="mt-3 text-slate-700">{editionConfig.dashboardIntro}</p>
-      <p className="mt-4 rounded border border-amber-300 bg-amber-50 p-4 text-slate-800">
+      <RequireAuth>
+      <p className="eyebrow">Dashboard{sessionMode === "server" ? ", server and local documents" : ", local drafts only"}</p>
+      <h1 className="page-title">Dashboard</h1>
+      <p className="mt-3 text-ink">{editionConfig.dashboardIntro}</p>
+      <p className="mt-4 notice text-ink">
         {siteConfig.status} {sessionEmail ? (sessionMode === "server" ? `Signed in on the server as ${sessionEmail}.` : `Signed in locally as ${sessionEmail}.`) : "Not signed in. The documents below are local browser drafts only, not server documents."} No payment or AI is connected here.
       </p>
       <p className="mt-4 flex flex-wrap gap-2">
-        <a className="rounded bg-navy px-4 py-2 text-white" href="/builder">Open the CV builder</a>
-        <a className="rounded border border-slate-300 px-4 py-2" href="/auth">Account, local only</a>
-        <a className="rounded border border-slate-300 px-4 py-2" href="/profile">Edit master profile</a>
-        <a className="rounded border border-slate-300 px-4 py-2" href="/writer">Local writer</a>
-        <a className="rounded border border-slate-300 px-4 py-2" href="/letters">Letter studio</a>
-        <a className="rounded border border-slate-300 px-4 py-2" href="/ats">ATS check, heuristic only</a>
-        <a className="rounded border border-slate-300 px-4 py-2" href="/subscription">Subscription, local only</a>
+        <a className="btn-primary" href="/builder">Open the CV builder</a>
+        <a className="btn-secondary" href="/auth">Account</a>
+        <a className="btn-secondary" href="/profile">Edit master profile</a>
+        <a className="btn-secondary" href="/writer">Local writer</a>
+        <a className="btn-secondary" href="/letters">Letter studio</a>
+        <a className="btn-secondary" href="/ats">ATS check, heuristic only</a>
+        <a className="btn-secondary" href="/subscription">Subscription, local only</a>
       </p>
 
       {serverAvailable && (
         <>
-          <h2 className="mt-8 text-2xl font-semibold">Your documents on the server</h2>
+          <h2 className="mt-8 section-title">Your documents on the server</h2>
           {serverDocuments.length === 0 ? (
-            <p className="mt-3 text-slate-700">No server documents yet. Open the builder and use Save to server to store a copy there.</p>
+            <p className="mt-3 text-ink">No server documents yet. Open the builder and use Save to server to store a copy there.</p>
           ) : (
             <ul className="mt-4 space-y-3">
               {serverDocuments.map((document: any) => (
-                <li key={document.id} className="rounded border border-slate-200 bg-white p-4">
+                <li key={document.id} className="card">
                   <p className="font-semibold">{document.title || "Untitled document"}</p>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-muted">
                     Server document | Template: {document.templateId || "not set"} | Paper: {document.paperSize === "US_LETTER" ? "US Letter" : "A4"} | Updated: {document.updatedAt || "not set"}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button type="button" className="rounded bg-navy px-3 py-2 text-sm text-white" onClick={() => openServerInBuilder(document)}>Open in builder</button>
-                    <button type="button" className="rounded border border-red-300 px-3 py-2 text-sm" onClick={() => handleServerDelete(document.id, document.title || "Untitled document")}>Delete from server, with confirmation</button>
+                    <button type="button" className="btn-secondary" onClick={() => openServerInBuilder(document)}>Open in builder</button>
+                    <button type="button" className="btn-danger" onClick={() => handleServerDelete(document.id, document.title || "Untitled document")}>Delete from server, with confirmation</button>
                   </div>
                 </li>
               ))}
             </ul>
           )}
-          <p className="mt-3 text-sm text-slate-500">Server documents store the title, template, paper size, and section order. The full profile content is stored separately on the profile page, not inside a server document. Rename and duplicate are not offered for server documents yet.</p>
+          <p className="mt-3 text-sm text-muted">Server documents store the title, template, paper size, and section order. The full profile content is stored separately on the profile page, not inside a server document. Rename and duplicate are not offered for server documents yet.</p>
         </>
       )}
 
-      <h2 className="mt-8 text-2xl font-semibold">Your documents in this browser, local only</h2>
+      <h2 className="mt-8 section-title">Your documents in this browser, local only</h2>
       {documents.length === 0 ? (
-        <p className="mt-3 text-slate-700">No local documents yet. Open the builder to create a draft, or import a CV there.</p>
+        <p className="mt-3 text-ink">No local documents yet. Open the builder to create a draft, or import a CV there.</p>
       ) : (
         <ul className="mt-4 space-y-3">
           {documents.map((document: any) => (
-            <li key={document.id} className="rounded border border-slate-200 bg-white p-4">
+            <li key={document.id} className="card">
               <p className="font-semibold">{document.label}</p>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted">
                 {document.kind === "master" ? "Master draft" : `Job version${document.jobTitle ? `: ${document.jobTitle}` : ""}${document.company ? ` at ${document.company}` : ""}`} | Template: {document.settings?.templateId || "ats-minimal"} | Paper: {document.settings?.paperSize || "A4"}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" className="rounded bg-navy px-3 py-2 text-sm text-white" onClick={() => openInBuilder(document)}>Open in builder</button>
-                <button type="button" className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => handleDuplicate(document.id)}>Duplicate</button>
-                <button type="button" className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => { setRenameId(document.id); setRenameValue(document.label); }}>Rename</button>
-                <button type="button" className="rounded border border-red-300 px-3 py-2 text-sm" onClick={() => handleDelete(document.id, document.label)}>Delete, with confirmation</button>
+                <button type="button" className="btn-secondary" onClick={() => openInBuilder(document)}>Open in builder</button>
+                <button type="button" className="btn-secondary" onClick={() => handleDuplicate(document.id)}>Duplicate</button>
+                <button type="button" className="btn-secondary" onClick={() => { setRenameId(document.id); setRenameValue(document.label); }}>Rename</button>
+                <button type="button" className="btn-danger" onClick={() => handleDelete(document.id, document.label)}>Delete, with confirmation</button>
               </div>
               {renameId === document.id && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <input className="rounded border p-2" value={renameValue} onChange={(event) => setRenameValue(event.target.value)} aria-label="New document name" />
-                  <button type="button" className="rounded bg-navy px-3 py-2 text-sm text-white" onClick={() => handleRename(document.id)}>Save name</button>
-                  <button type="button" className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => { setRenameId(""); setRenameValue(""); }}>Cancel</button>
+                  <input className="input-field" value={renameValue} onChange={(event) => setRenameValue(event.target.value)} aria-label="New document name" />
+                  <button type="button" className="btn-secondary" onClick={() => handleRename(document.id)}>Save name</button>
+                  <button type="button" className="btn-secondary" onClick={() => { setRenameId(""); setRenameValue(""); }}>Cancel</button>
                 </div>
               )}
             </li>
           ))}
         </ul>
       )}
-      {message && <p className="mt-4 text-slate-800">{message}</p>}
+      {message && <p className="mt-4 text-ink">{message}</p>}
 
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded border border-slate-200 bg-white p-4">
+        <div className="card">
           <h3 className="font-semibold">Templates</h3>
-          <p className="mt-2 text-slate-700">All 10 version 1 templates are in the builder, with an honest ATS note per template.</p>
-          <p className="mt-2"><a className="text-blue-700 underline" href="/builder">Open the builder</a></p>
+          <p className="mt-2 text-ink">All 10 version 1 templates are in the builder, with an honest ATS note per template.</p>
+          <p className="mt-2"><a className="brand-link" href="/builder">Open the builder</a></p>
         </div>
-        <div className="rounded border border-slate-200 bg-white p-4">
+        <div className="card">
           <h3 className="font-semibold">Local writer, letters, and ATS check</h3>
-          <p className="mt-2 text-slate-700">Local drafting assistance, letter studio, and a heuristic ATS check are now working, in this browser only. No AI provider is connected, so no AI credits are shown.</p>
-          <p className="mt-2"><a className="text-blue-700 underline" href="/writer">Open the local writer</a></p>
+          <p className="mt-2 text-ink">Local drafting assistance, letter studio, and a heuristic ATS check are now working, in this browser only. No AI provider is connected, so no AI credits are shown.</p>
+          <p className="mt-2"><a className="brand-link" href="/writer">Open the local writer</a></p>
         </div>
-        <div className="rounded border border-slate-200 bg-white p-4">
+        <div className="card">
           <h3 className="font-semibold">AI credits</h3>
-          <p className="mt-2 text-slate-700">Not yet connected. No connected AI generation and no credit balance is shown here, because no AI provider is connected.</p>
+          <p className="mt-2 text-ink">Not yet connected. No connected AI generation and no credit balance is shown here, because no AI provider is connected.</p>
         </div>
-        <div className="rounded border border-slate-200 bg-white p-4">
+        <div className="card">
           <h3 className="font-semibold">Subscription, local only</h3>
-          <p className="mt-2 text-slate-700">Local plan config only, in this browser. No payment, price, or Stripe account has been decided, and no checkout is working. Trial, entitlements, downgrade behaviour, and local cancel are shown on the subscription page.</p>
-          <p className="mt-2"><a className="text-blue-700 underline" href="/subscription">Open the subscription page</a></p>
+          <p className="mt-2 text-ink">Local plan config only, in this browser. No payment, price, or Stripe account has been decided, and no checkout is working. Trial, entitlements, downgrade behaviour, and local cancel are shown on the subscription page.</p>
+          <p className="mt-2"><a className="brand-link" href="/subscription">Open the subscription page</a></p>
         </div>
-        <div className="rounded border border-slate-200 bg-white p-4">
+        <div className="card">
           <h3 className="font-semibold">Human review</h3>
-          <p className="mt-2 text-slate-700">Not yet connected. {editionConfig.humanHelpNote}</p>
+          <p className="mt-2 text-ink">Not yet connected. {editionConfig.humanHelpNote}</p>
         </div>
       </div>
-      <p className="mt-8 text-sm text-slate-500">
+      <p className="mt-8 text-sm text-muted">
         Layout: one column on phones, two columns on tablets, three columns on desktops. Edition is selected by NEXT_PUBLIC_EDITION in lib/config.ts, not by hard coded copy.
       </p>
+      </RequireAuth>
     </main>
   );
 }
