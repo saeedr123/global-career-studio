@@ -66,6 +66,27 @@ export default function AuthPage() {
   const [accountMode, setAccountMode] = useState<"server" | "local">("server");
   const [message, setMessage] = useState("");
 
+  function safeNextPath() {
+    try {
+      const next = new URLSearchParams(window.location.search).get("next");
+      if (next && next.startsWith("/") && !next.startsWith("//") && next !== "/auth") {
+        return next;
+      }
+    } catch {
+      return "";
+    }
+    return "";
+  }
+
+  function redirectAfterSignIn() {
+    const next = safeNextPath();
+    if (next) {
+      window.location.assign(next);
+      return true;
+    }
+    return false;
+  }
+
   useEffect(() => {
     const stored = readStoredSession();
     if (stored && stored.mode === "server") {
@@ -73,10 +94,12 @@ export default function AuthPage() {
       if (serverSession) {
         setSessionEmail(serverSession.email);
         setSessionMode("server");
+        redirectAfterSignIn();
       }
     } else if (isSessionValid(stored)) {
       setSessionEmail(stored.email);
       setSessionMode("local");
+      redirectAfterSignIn();
     }
     checkServerAvailable().then((result) => {
       setServerAvailable(result.available);
@@ -105,6 +128,7 @@ export default function AuthPage() {
         setSessionEmail(result.account.email);
         setSessionMode("server");
         setMessage("Server account created and signed in. Your account syncs across devices, and documents you save to the server are stored there.");
+        redirectAfterSignIn();
         return;
       } catch (error: any) {
         if (error?.code === "local_only" || error?.code === "unreachable") {
@@ -123,6 +147,7 @@ export default function AuthPage() {
       setSessionEmail(loginResult.session.email);
       setSessionMode("local");
       setMessage("Local account created and signed in, in this browser only. No server account was created.");
+      redirectAfterSignIn();
     } catch (error: any) {
       setMessage(error?.message || "Signup failed in this browser.");
     }
@@ -147,6 +172,7 @@ export default function AuthPage() {
         setSessionEmail(result.account.email);
         setSessionMode("server");
         setMessage("Signed in on the server. Your documents on the server are listed on the dashboard.");
+        redirectAfterSignIn();
         return;
       } catch (error: any) {
         if (error?.code === "local_only" || error?.code === "unreachable") {
@@ -163,6 +189,7 @@ export default function AuthPage() {
       setSessionEmail(result.session.email);
       setSessionMode("local");
       setMessage("Signed in locally, in this browser only.");
+      redirectAfterSignIn();
     } catch (error: any) {
       setMessage(error?.message || "Login failed in this browser.");
     }
@@ -217,70 +244,70 @@ export default function AuthPage() {
 
   return (
     <main className="mx-auto max-w-xl px-4 py-8 sm:px-6">
-      <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">{signedInLabel}</p>
-      <h1 className="mt-2 text-3xl font-bold text-navy">Account</h1>
-      <p className="mt-3 text-slate-700">
+      <p className="eyebrow">{signedInLabel}</p>
+      <h1 className="page-title">Account</h1>
+      <p className="mt-3 text-ink">
         {serverAvailable === null
           ? "Checking whether the server is available..."
           : serverAvailable
             ? "Server accounts are available. A server account syncs across devices. A local account lives only in this browser."
-            : "The server is not available here, so accounts are local browser accounts only, until a real database is connected."}
+            : "The server is not available here, so accounts are local browser accounts only. Try again later, or continue with a local account."}
         {" "}Passwords are hashed, never stored in plain text, and no payment, AI, or real email is connected here.
       </p>
       {sessionEmail ? (
-        <div className="mt-4 rounded border border-green-300 bg-green-50 p-4">
+        <div className="mt-4 notice-success">
           <p>Signed in {sessionMode === "server" ? "on the server" : "locally"} as {sessionEmail}.</p>
-          <button type="button" className="mt-3 rounded bg-navy px-4 py-2 text-white" onClick={handleLogout}>Sign out{sessionMode === "server" ? " on the server" : " locally"}</button>
-          <p className="mt-3"><a className="text-blue-700 underline" href="/dashboard">Go to the dashboard</a></p>
-          <p className="mt-2"><a className="text-blue-700 underline" href="/profile">Edit your profile</a></p>
+          <button type="button" className="mt-3 btn-secondary" onClick={handleLogout}>Sign out{sessionMode === "server" ? " on the server" : " locally"}</button>
+          <p className="mt-3"><a className="brand-link" href="/dashboard">Go to the dashboard</a></p>
+          <p className="mt-2"><a className="brand-link" href="/profile">Edit your profile</a></p>
         </div>
       ) : (
-        <p className="mt-4 rounded border border-amber-300 bg-amber-50 p-4">Not signed in. Your builder drafts are still available in this browser, but they are not tied to a server account yet.</p>
+        <p className="mt-4 notice">Not signed in. Your builder drafts are still available in this browser, but they are not tied to a server account yet.</p>
       )}
       {serverAvailable && (
         <div className="mt-6 flex flex-wrap gap-2">
-          <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={() => setAccountMode("server")}>Use a server account</button>
-          <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={() => setAccountMode("local")}>Use a local browser account instead</button>
-          <span className="self-center text-sm text-slate-600">Now using: {accountMode === "server" ? "server account" : "local browser account"}.</span>
+          <button type="button" className="btn-secondary" onClick={() => setAccountMode("server")}>Use a server account</button>
+          <button type="button" className="btn-secondary" onClick={() => setAccountMode("local")}>Use a local browser account instead</button>
+          <span className="self-center text-sm text-muted">Now using: {accountMode === "server" ? "server account" : "local browser account"}.</span>
         </div>
       )}
       <div className="mt-6 flex flex-wrap gap-2">
-        <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={() => setMode("signup")}>Sign up</button>
-        <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={() => setMode("login")}>Sign in</button>
-        <button type="button" className="rounded border border-slate-300 px-3 py-2" onClick={() => setMode("reset-request")}>Forgot password</button>
+        <button type="button" className="btn-secondary" onClick={() => setMode("signup")}>Sign up</button>
+        <button type="button" className="btn-secondary" onClick={() => setMode("login")}>Sign in</button>
+        <button type="button" className="btn-secondary" onClick={() => setMode("reset-request")}>Forgot password</button>
       </div>
       {mode === "signup" && (
         <form className="mt-6 space-y-3" onSubmit={handleSignup}>
-          <label className="block">Name<input className="mt-1 block w-full rounded border p-2" value={name} onChange={(event) => setName(event.target.value)} /></label>
-          <label className="block">Email<input className="mt-1 block w-full rounded border p-2" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-          <label className="block">Password, at least 8 characters<input type="password" className="mt-1 block w-full rounded border p-2" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-          <label className="block">Confirm password<input type="password" className="mt-1 block w-full rounded border p-2" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label>
-          <button type="submit" className="rounded bg-navy px-4 py-2 text-white">Create {accountMode === "server" ? "server" : "local"} account</button>
+          <label className="block">Name<input className="mt-1 input-field" value={name} onChange={(event) => setName(event.target.value)} /></label>
+          <label className="block">Email<input className="mt-1 input-field" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+          <label className="block">Password, at least 8 characters<input type="password" className="mt-1 input-field" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+          <label className="block">Confirm password<input type="password" className="mt-1 input-field" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label>
+          <button type="submit" className="btn-primary">Create {accountMode === "server" ? "server" : "local"} account</button>
         </form>
       )}
       {mode === "login" && (
         <form className="mt-6 space-y-3" onSubmit={handleLogin}>
-          <label className="block">Email<input className="mt-1 block w-full rounded border p-2" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-          <label className="block">Password<input type="password" className="mt-1 block w-full rounded border p-2" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-          <button type="submit" className="rounded bg-navy px-4 py-2 text-white">Sign in {accountMode === "server" ? "on the server" : "locally"}</button>
+          <label className="block">Email<input className="mt-1 input-field" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+          <label className="block">Password<input type="password" className="mt-1 input-field" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+          <button type="submit" className="btn-primary">Sign in {accountMode === "server" ? "on the server" : "locally"}</button>
         </form>
       )}
       {mode === "reset-request" && (
         <form className="mt-6 space-y-3" onSubmit={handleResetRequest}>
-          <label className="block">Email<input className="mt-1 block w-full rounded border p-2" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-          <button type="submit" className="rounded bg-navy px-4 py-2 text-white">Request local reset token</button>
+          <label className="block">Email<input className="mt-1 input-field" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+          <button type="submit" className="btn-primary">Request local reset token</button>
         </form>
       )}
       {mode === "reset" && (
         <form className="mt-6 space-y-3" onSubmit={handleReset}>
-          {shownResetToken && <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">Local reset token, shown here only because no email is sent: {shownResetToken}</p>}
-          <label className="block">Reset token<input className="mt-1 block w-full rounded border p-2" value={resetToken} onChange={(event) => setResetToken(event.target.value)} /></label>
-          <label className="block">New password, at least 8 characters<input type="password" className="mt-1 block w-full rounded border p-2" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-          <label className="block">Confirm new password<input type="password" className="mt-1 block w-full rounded border p-2" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label>
-          <button type="submit" className="rounded bg-navy px-4 py-2 text-white">Reset local password</button>
+          {shownResetToken && <p className="notice">Local reset token, shown here only because no email is sent: {shownResetToken}</p>}
+          <label className="block">Reset token<input className="mt-1 input-field" value={resetToken} onChange={(event) => setResetToken(event.target.value)} /></label>
+          <label className="block">New password, at least 8 characters<input type="password" className="mt-1 input-field" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+          <label className="block">Confirm new password<input type="password" className="mt-1 input-field" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label>
+          <button type="submit" className="btn-primary">Reset local password</button>
         </form>
       )}
-      {message && <p className="mt-4 text-slate-800">{message}</p>}
+      {message && <p className="mt-4 text-ink">{message}</p>}
     </main>
   );
 }
