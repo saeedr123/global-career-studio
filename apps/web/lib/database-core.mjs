@@ -1,8 +1,16 @@
-// Server side data layer, Phase 2 increment 13.
+// Server side data layer, Phase 2 increment 13, extended in
+// increment 14 with server sessions and server password handling.
 // Ready for Neon, the chosen hosted Postgres, free plan, region AWS
 // EU Central Frankfurt (eu-central-1). See docs/database-design.md.
-// No live Neon database is connected in this increment, because no
-// DATABASE_URL has been shared and no repo secret has been added yet.
+// The live Neon database has the initial migration applied, 33
+// public tables, migration 20261105000000_init, User rows 0.
+// The Session table from increment 14 is NOT applied to the live
+// database yet: it needs the owner to run the manual Neon migrate
+// deploy workflow on GitHub once, after this increment is pushed.
+// Until then the session functions below throw the plain database
+// not configured error through requireClient, or the session table
+// error from the database, and callers keep the local browser
+// fallback working, clearly labelled.
 // Every function that talks to the database takes the Prisma client
 // as its first argument, so tests can pass a mocked client and no
 // test ever touches a real database. When the client is null, the
@@ -18,7 +26,13 @@
 // passwordHash, and no function returns it. Audit entries never
 // contain CV text, names, emails, or secrets.
 
+import { createHash, randomBytes } from "node:crypto";
+
 export const EDITIONS = ["nvconsult", "commercial"];
+
+// Server sessions live 24 hours, the same length as the local
+// browser session in lib/auth-core.mjs.
+export const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 export const DOCUMENT_TYPES = [
   "cv",
@@ -70,6 +84,18 @@ export function requireAdmin(user) {
     throw new Error("Admin access requires a signed in admin user. Local browser admin is not a secured production admin.");
   }
   return true;
+}
+
+// Real admin auth groundwork, wired to the database. Loads the
+// user from the database by id, checks the admin role, and returns
+// the public user, never the password hash. Until a real admin user
+// exists in the database, this throws, and the admin page stays
+// clearly labelled not a secured production admin.
+export async function assertAdminUser(client, userId) {
+  requireClient(client);
+  const user = await getUserById(client, userId);
+  requireAdmin(user);
+  return user;
 }
 
 export function assertOwnsDocument(userId, document) {
@@ -135,6 +161,134 @@ export async function getUserById(client, id) {
   }
   const found = await client.user.findUnique({ where: { id: String(id) } });
   return publicUser(found);
+}
+
+// Server password handling. The local browser auth in
+// lib/auth-core.mjs keeps salt and passwordHash in separate fields,
+// but the Prisma User row has only one passwordHash column, so the
+// server stores the two parts together as "salt:hash", with the
+// salt as random hex and the hash as SHA-256 of "salt:password".
+// The stored value is still only a hash, never a plain password.
+// verifyServerPassword accepts that form, and also a bare hex hash
+// with no salt, so an older row is not silently locked out, it is
+// checked against the same SHA-256 of the password alone.
+export function hashServerPassword(password, salt) {
+  if (!password || String(password).length < 8) {
+    throw new Error("The password must be at least 8 characters.");
+  }
+  const useSalt = salt || randomBytes(16).toString("hex");
+  const hash = createHash("sha256").update(`${useSalt}:${String(password)}`).digest("hex");
+  return { salt: useSalt, passwordHash: `${useSalt}:${hash}` };
+}
+
+export function verifyServerPassword(password, storedHash) {
+  if (!password || !storedHash) {
+    return false;
+  }
+  const stored = String(storedHash);
+  if (stored.includes(":")) {
+    const [salt] = stored.split(":");
+    return hashServerPassword(password, salt).passwordHash === stored;
+  }
+  const hash = createHash("sha256").update(String(password)).digest("hex");
+  return hash === stored;
+}
+
+// Returns the full user row, including passwordHash. This is for
+// server login only, inside this module and the auth API route.
+// It must never be returned to a client: callers use publicUser.
+export async function getUserRecordByEmail(client, email) {
+  requireClient(client);
+  if (!isValidEmail(email)) {
+    return null;
+  }
+  return client.user.findUnique({ where: { email: normaliseEmail(email) } });
+}
+
+// Server sessions. Only a SHA-256 hash of the token is stored, so
+// a leaked session row cannot be used to sign in. The plain token
+// is returned once, at creation, inside createSessionRecord, and
+// the caller must send it back as a Bearer token. An expired
+// session is treated as missing, never as valid.
+export function hashSessionToken(token) {
+  if (!token || !String(token).trim()) {
+    throw new Error("A session token is required.");
+  }
+  return createHash("sha256").update(String(token)).digest("hex");
+}
+
+export function sessionExpiryFrom(nowMs) {
+  return new Date((nowMs || Date.now()) + SESSION_TTL_MS);
+}
+
+export function publicSession(session) {
+  if (!session) {
+    return null;
+  }
+  const { tokenHash, ...rest } = session;
+  return rest;
+}
+
+export async function createSessionRecord(client, userId, token) {
+  requireClient(client);
+  if (!userId) {
+    throw new Error("A user id is required for a session.");
+  }
+  const plainToken = token || randomBytes(32).toString("hex");
+  const expiresAt = sessionExpiryFrom(Date.now());
+  const created = await client.session.create({
+    data: {
+      userId: String(userId),
+      tokenHash: hashSessionToken(plainToken),
+      expiresAt
+    }
+  });
+  return { token: plainToken, session: publicSession(created) };
+}
+
+export async function getSessionByToken(client, token) {
+  requireClient(client);
+  if (!token) {
+    return null;
+  }
+  const found = await client.session.findUnique({ where: { tokenHash: hashSessionToken(token) } });
+  if (!found) {
+    return null;
+  }
+  if (new Date(found.expiresAt).getTime() <= Date.now()) {
+    return null;
+  }
+  return publicSession(found);
+}
+
+export async function getSessionUser(client, token) {
+  const session = await getSessionByToken(client, token);
+  if (!session) {
+    return null;
+  }
+  return getUserById(client, session.userId);
+}
+
+export async function revokeSessionRecord(client, token) {
+  requireClient(client);
+  if (!token) {
+    return false;
+  }
+  const found = await client.session.findUnique({ where: { tokenHash: hashSessionToken(token) } });
+  if (!found) {
+    return false;
+  }
+  await client.session.delete({ where: { id: found.id } });
+  return true;
+}
+
+export async function revokeAllSessionsForUser(client, userId) {
+  requireClient(client);
+  if (!userId) {
+    return 0;
+  }
+  const result = await client.session.deleteMany({ where: { userId: String(userId) } });
+  return result ? result.count || 0 : 0;
 }
 
 // Profile mapping. A local builder profile keeps experience periods
