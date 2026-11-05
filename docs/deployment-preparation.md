@@ -1,6 +1,6 @@
 # Deployment preparation
 
-Status: docs only, Phase 2 increment 11. This document is NOT a
+Status: docs only, Phase 2 increment 12. This document is NOT a
 launch approval, and nothing in it deploys, buys, or creates any
 live account. The product is NOT launch ready. Do the steps below,
 in order, and recheck each one with evidence, before any real
@@ -16,6 +16,14 @@ install succeeded with 35 packages, validate exit 1, exact error:
 Error aborted, at TLSSocket.socketCloseListener, code ECONNRESET,
 attemptNumber 1, retriesLeft 2. The provider was NOT changed
 to SQLite as a workaround, and no migration was run in increment 11.
+In increment 12, a GitHub Actions workflow was added at
+.github/workflows/prisma-validate.yml to run validate, generate,
+and db push against an ephemeral Postgres service container on
+GitHub, because this environment cannot run GitHub Actions or
+check a run status. That workflow is pushed, and its first CI run
+is pending on GitHub, NOT claimed as passed. The provider was NOT
+changed to SQLite, checksums were NOT ignored, and no migration
+was run against any real database in increment 12.
 All accounts, drafts, job versions, letters, and admin state remain
 local browser data only, clearly labelled. Before any deployment:
 
@@ -125,10 +133,10 @@ local browser data only, clearly labelled. Before any deployment:
 
 These items are still undone, and launch must wait for them:
 
-- LinkedIn import: decided in increment 11 as not built, because
-  no permitted API path has been tested, see
-  docs/linkedin-import-decision.md. Guided paste import and
-  PDF/DOCX import remain the working fallbacks.
+- LinkedIn import: export import built in increment 12, API import
+  still not built, because no permitted API path has been tested,
+  see docs/linkedin-import-decision.md. Guided paste import and
+  PDF/DOCX import remain working fallbacks, plus export import.
 - Connected AI generation: provider decided as Muse AI in
   increment 11, but NOT live, because no key and no budget cap
   have been set. Live calls, key, and budget cap remain.
