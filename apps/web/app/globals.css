@@ -15,12 +15,198 @@
   --color-paper: #ffffff;
   --color-background: #f8fafc;
   --color-border: #e2e8f0;
+  --color-success: #15803d;
+  --color-success-background: #f0fdf4;
+  --color-success-border: #86efac;
+  --color-danger: #b91c1c;
+  --color-danger-border: #fca5a5;
   --radius-card: 0.75rem;
   --radius-button: 0.5rem;
+  --tap-target: 44px;
 }
 
 body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   background: var(--color-background);
   color: var(--color-ink);
+}
+
+/* Branded component classes, Increment 16. Pages use these semantic
+   classes instead of repeating ad hoc utilities, so the navy and gold
+   brand from the tokens applies the same way on every page. A primary
+   action is always the gold button with navy text; everything else is
+   a secondary button or a plain text link. No class here invents a
+   price, limit, or offer. */
+@layer components {
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--tap-target);
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--radius-button);
+    background: var(--color-gold);
+    color: var(--color-navy);
+    font-weight: 700;
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .btn-primary:hover {
+    background: var(--color-navy);
+    color: #ffffff;
+  }
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--tap-target);
+    padding: 0.625rem 1rem;
+    border-radius: var(--radius-button);
+    background: var(--color-paper);
+    color: var(--color-navy);
+    font-weight: 600;
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .btn-secondary:hover {
+    border-color: var(--color-navy);
+  }
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--tap-target);
+    padding: 0.625rem 1rem;
+    border-radius: var(--radius-button);
+    background: var(--color-paper);
+    color: var(--color-danger);
+    font-weight: 600;
+    border: 1px solid var(--color-danger-border);
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .btn-danger:hover {
+    border-color: var(--color-danger);
+  }
+  .card {
+    background: var(--color-paper);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    padding: 1rem;
+  }
+  .eyebrow {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-muted);
+  }
+  .page-title {
+    margin-top: 0.5rem;
+    font-size: 1.875rem;
+    line-height: 1.2;
+    font-weight: 700;
+    color: var(--color-navy);
+  }
+  .section-title {
+    font-size: 1.5rem;
+    line-height: 1.3;
+    font-weight: 600;
+    color: var(--color-navy);
+  }
+  .card-title {
+    font-size: 1.125rem;
+    line-height: 1.4;
+    font-weight: 700;
+    color: var(--color-navy);
+  }
+  .hero-title {
+    font-size: clamp(2rem, 6vw, 3rem);
+    line-height: 1.15;
+    font-weight: 700;
+    color: #ffffff;
+  }
+  .lead {
+    font-size: 1.125rem;
+    line-height: 1.6;
+  }
+  .brand-link {
+    color: var(--color-navy);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .brand-link:hover {
+    color: var(--color-navy-dark);
+  }
+  .link-danger {
+    color: var(--color-danger);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .input-field {
+    display: block;
+    width: 100%;
+    min-height: var(--tap-target);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-button);
+    padding: 0.5rem 0.75rem;
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+  .input-field:focus {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 1px;
+  }
+  .notice {
+    background: var(--color-gold-soft);
+    border: 1px solid var(--color-gold);
+    border-radius: var(--radius-card);
+    padding: 1rem;
+    color: var(--color-ink);
+  }
+  .notice-success {
+    background: var(--color-success-background);
+    border: 1px solid var(--color-success-border);
+    border-radius: var(--radius-card);
+    padding: 1rem;
+    color: var(--color-ink);
+  }
+  .hero {
+    background: var(--color-navy);
+    color: #ffffff;
+  }
+  .hero-rule {
+    width: 4rem;
+    height: 0.25rem;
+    background: var(--color-gold);
+    border-radius: 9999px;
+  }
+  .site-header {
+    background: var(--color-navy);
+    color: #ffffff;
+  }
+  .site-nav-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-target);
+    padding: 0.25rem 0.75rem;
+    color: #ffffff;
+    text-decoration: none;
+    border-radius: var(--radius-button);
+  }
+  .site-nav-link:hover {
+    background: var(--color-navy-dark);
+    text-decoration: underline;
+  }
+  .site-footer {
+    background: var(--color-navy-dark);
+    color: #cbd5e1;
+  }
+  .site-footer a {
+    color: #ffffff;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
 }
