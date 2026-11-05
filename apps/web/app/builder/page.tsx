@@ -80,6 +80,8 @@ export default function BuilderPage() {
   const [parsed, setParsed] = useState<any>(null);
   const [fileParsed, setFileParsed] = useState<any>(null);
   const [fileStatus, setFileStatus] = useState("");
+  const [linkedinParsed, setLinkedinParsed] = useState<any>(null);
+  const [linkedinStatus, setLinkedinStatus] = useState("");
   const [jobVersions, setJobVersions] = useState<any[]>([]);
   const [jobTitle, setJobTitle] = useState("");
   const [jobCompany, setJobCompany] = useState("");
@@ -325,6 +327,47 @@ export default function BuilderPage() {
     setActiveJobVersionId("");
     setFileParsed(null);
     setMessage("File import applied as a draft. It is not a verified real CV until you check it.");
+  }
+
+  async function handleLinkedInImport(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) {
+      return;
+    }
+    setLinkedinStatus("Reading LinkedIn export files, please wait...");
+    setLinkedinParsed(null);
+    try {
+      const form = new FormData();
+      for (const file of Array.from(fileList)) {
+        form.append("file", file);
+      }
+      const response = await fetch("/api/linkedin-import", { method: "POST", body: form });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "LinkedIn export import failed.");
+      }
+      setLinkedinParsed(data);
+      setLinkedinStatus(
+        data.empty
+          ? "No expected LinkedIn export CSV files were found. Check the files and try again. Your draft was not changed."
+          : "LinkedIn export parsed. Check the fields below, correct them, then use this import."
+      );
+    } catch {
+      setLinkedinStatus("LinkedIn export import failed. Your draft was not changed. Please check the files and try again.");
+    }
+  }
+
+  function useLinkedInImport() {
+    if (!linkedinParsed) {
+      return;
+    }
+    setProfile(clone(linkedinParsed.profile));
+    setSettings((current: any) => ({
+      ...current,
+      sectionOrder: sectionOrderFor(linkedinParsed.profile, current.sectionOrder)
+    }));
+    setActiveJobVersionId("");
+    setLinkedinParsed(null);
+    setMessage("LinkedIn export import applied as a draft. It is not a verified real CV until you check it.");
   }
 
   function createJobVersionFromMaster() {
@@ -703,8 +746,8 @@ export default function BuilderPage() {
             <p className="mt-1 text-sm text-slate-500">
               The working path is pasted structured text, or a plain text file.
               PDF and DOCX file import is in the section below, also with a
-              correction step. LinkedIn import is planned, not built, and
-              guided paste is the working fallback. Nothing is imported
+              correction step. LinkedIn export import is in the section
+              below, also with a correction step. Nothing is imported
               until you check and correct it below.
             </p>
             <textarea className="mt-3 w-full rounded border border-slate-300 p-2 font-mono text-sm" rows={10} value={importText} onChange={(e) => setImportText(e.target.value)} />
@@ -774,6 +817,66 @@ export default function BuilderPage() {
                 <div className="mt-3 flex gap-2">
                   <button type="button" className="rounded bg-navy px-3 py-2 text-sm text-white" onClick={useFileImport}>Use this import as a draft</button>
                   <button type="button" className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => setFileParsed(null)}>Discard import</button>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="mt-4 rounded border border-slate-200 bg-white p-4">
+            <h3 className="font-semibold">Import LinkedIn export, with correction</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Official data export import only. Studio does not contact
+              LinkedIn, does not scrape LinkedIn, and does not use an
+              unofficial API. LinkedIn API import is not built.
+            </p>
+            <p className="mt-2 text-sm text-slate-700">
+              How to get your export: on LinkedIn on desktop, open Settings
+              and Privacy, then Data Privacy, then Get a copy of your data,
+              pick at least Profile, Positions, Education, Skills,
+              Certifications, and Languages, request the archive, unzip it,
+              and upload the CSV files here. You can upload the CSV files
+              one by one, or upload the ZIP file and Studio will read the
+              CSV files inside it. Each file must be 5 MB or smaller.
+            </p>
+            <p className="mt-2 text-sm text-slate-500">
+              Note: the export contains your own data. The profile photo is
+              not in the export, so no photo is imported. Dates in Month
+              YYYY form are kept as written for correction. An empty
+              Finished On in Positions.csv means a current role. Missing
+              files and missing columns are warned about, never filled in.
+              Unknown columns are warned about and not used. Only after you
+              check and correct the fields below does the import become a
+              draft.
+            </p>
+            <label className="mt-3 block rounded border border-slate-300 px-3 py-2 text-sm">Upload LinkedIn export CSV files or ZIP file
+              <input type="file" accept=".csv,.zip,text/csv,application/zip" multiple className="ml-2" onChange={(e) => handleLinkedInImport(e.target.files)} />
+            </label>
+            {linkedinStatus && <p className="mt-2 text-sm">{linkedinStatus}</p>}
+            {linkedinParsed && !linkedinParsed.empty && (
+              <div className="mt-4 rounded border border-amber-300 bg-amber-50 p-3">
+                <p className="font-semibold">Check and correct this LinkedIn export before use</p>
+                <p className="mt-1 text-sm">Files used: {linkedinParsed.filesParsed.join(", ") || "none"}</p>
+                {linkedinParsed.filesMissing.length > 0 && <p className="mt-1 text-sm">Files not supplied: {linkedinParsed.filesMissing.join(", ")}</p>}
+                {linkedinParsed.warnings.length > 0 && <p className="mt-1 text-sm">Notes: {linkedinParsed.warnings.join(" ")}</p>}
+                {linkedinParsed.unparsedLines.length > 0 && <p className="mt-1 text-sm">Unparsed items, not imported: {linkedinParsed.unparsedLines.join(" | ")}</p>}
+                <label className="mt-3 block text-sm">Name
+                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={linkedinParsed.profile.fullName} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, fullName: e.target.value } })} />
+                </label>
+                <label className="mt-2 block text-sm">Headline
+                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={linkedinParsed.profile.headline} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, headline: e.target.value } })} />
+                </label>
+                <label className="mt-2 block text-sm">Summary
+                  <textarea className="mt-1 w-full rounded border border-slate-300 bg-white p-2" rows={3} value={linkedinParsed.profile.summary} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, summary: e.target.value } })} />
+                </label>
+                <label className="mt-2 block text-sm">Skills, comma separated
+                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={linkedinParsed.profile.skills.join(", ")} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, skills: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) } })} />
+                </label>
+                <label className="mt-2 block text-sm">Languages, comma separated
+                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={linkedinParsed.profile.languages.join(", ")} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, languages: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) } })} />
+                </label>
+                <div className="mt-3 flex gap-2">
+                  <button type="button" className="rounded bg-navy px-3 py-2 text-sm text-white" onClick={useLinkedInImport}>Use this LinkedIn import as a draft</button>
+                  <button type="button" className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => setLinkedinParsed(null)}>Discard import</button>
                 </div>
               </div>
             )}
