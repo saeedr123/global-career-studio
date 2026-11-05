@@ -1,3 +1,47 @@
+# Prisma (Phase 2 increment 14)
+
+This folder holds the Prisma schema, the initial migration, the
+Session migration, and the migration lock file. The chosen hosted
+Postgres is Neon, free plan, region AWS EU Central Frankfurt
+(eu-central-1). The live Neon database has the initial migration
+applied, 20261105000000_init, 33 public tables, User rows 0.
+
+## Increment 14 Session migration, honest status
+
+The schema now has 33 models, including the new Session model
+with id, userId with a foreign key to User with cascade delete,
+tokenHash unique, expiresAt, and createdAt. The migration at
+migrations/20261105080000_add_session/migration.sql was authored
+from prisma/schema.prisma in this increment, because the Prisma
+engine download fails in this workspace and no local Prisma run
+can generate it. It adds one table only, Session, checked locally
+against the schema: all 5 fields match, tokenHash unique index
+present, cascade delete present, and the initial migration is
+untouched at 32 CREATE TABLE statements. That script check is NOT
+a Prisma run, and the migration is NOT claimed as proved until a
+CI workflow passes. The new workflow at
+.github/workflows/prisma-session-validate.yml runs prisma
+validate, prisma generate, prisma migrate deploy, prisma migrate
+status, and prisma db push against an ephemeral Postgres 15
+service container. That workflow is pushed, and its run is
+pending on GitHub, not claimed as passed, because this
+environment cannot check a run status. The existing workflow at
+.github/workflows/prisma-migration.yml also triggers on prisma/**
+pushes, so it will also deploy the committed migrations to its
+ephemeral test database. The Session migration has NOT been
+applied to the live Neon database yet: it needs the owner to run
+the manual Neon migrate deploy workflow on GitHub once, after
+increment 14 is pushed, exactly as for the initial migration.
+That workflow never runs on push. Local Prisma generate in
+increment 14 failed again with the same ECONNRESET engine
+download error, so no client was generated locally. A deploy time
+generate step was added at apps/web/scripts/prisma-generate.mjs,
+run as the prebuild step of npm run build, which tries a local
+Prisma CLI and then npx prisma@6.14.0 generate, and on failure
+prints a plain warning and exits 0, never failing the build.
+Session tests at apps/web/scripts/test-session.mjs passed 17 of
+17 with a mocked client only, never a real database.
+
 # Prisma (Phase 2 increment 13)
 
 This folder holds the Prisma schema, the initial migration, and the
