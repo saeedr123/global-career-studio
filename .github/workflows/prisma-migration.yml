@@ -72,11 +72,13 @@ jobs:
       - name: Validate schema
         env:
           DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+          DIRECT_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
         run: |
           ./prisma-ci/node_modules/.bin/prisma validate --schema prisma/schema.prisma
       - name: Generate migration SQL from the schema for review
         env:
           DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+          DIRECT_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
         run: |
           ./prisma-ci/node_modules/.bin/prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > /tmp/prisma-generated-migration.sql
           test -s /tmp/prisma-generated-migration.sql
@@ -89,10 +91,12 @@ jobs:
       - name: Deploy the committed migration to the ephemeral test database only
         env:
           DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+          DIRECT_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
         run: |
           ./prisma-ci/node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma
       - name: Confirm the migration status is up to date
         env:
           DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+          DIRECT_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
         run: |
           ./prisma-ci/node_modules/.bin/prisma migrate status --schema prisma/schema.prisma
