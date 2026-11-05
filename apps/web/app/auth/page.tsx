@@ -18,6 +18,7 @@ import {
   storeServerSession
 } from "../../lib/session-client.mjs";
 import { edition, editionConfig } from "../../lib/config";
+import ErrorNotice from "../components/ErrorNotice";
 
 // Account page, Phase 2 increment 17.
 // One flow only: sign up and sign in with an email address and a
@@ -62,6 +63,7 @@ export default function AuthPage() {
   const [sessionEmail, setSessionEmail] = useState("");
   const [serverAvailable, setServerAvailable] = useState<boolean | null>(null);
   const [message, setMessage] = useState("");
+  const [notice, setNotice] = useState<any>(null);
 
   function safeNextPath() {
     try {
@@ -113,7 +115,11 @@ export default function AuthPage() {
     event.preventDefault();
     const errors = validateSignup({ name, email, password, confirmPassword });
     if (errors.length > 0) {
-      setMessage(`Please fix: ${errors.join(", ")}. Password must be at least 8 characters.`);
+      setNotice({
+        title: "Please check the details.",
+        message: `Please fix: ${errors.join(", ")}.`,
+        solution: "Use a valid email and a password of at least 8 characters, then try again."
+      });
       return;
     }
     if (serverAvailable !== false) {
@@ -131,7 +137,11 @@ export default function AuthPage() {
         return;
       } catch (error: any) {
         if (error?.code !== "local_only" && error?.code !== "unreachable") {
-          setMessage(error?.message || "Signup failed.");
+          setNotice({
+            title: "Sign up failed.",
+            message: error?.message || "Signup failed.",
+            solution: error?.solution || "Check your details and try again."
+          });
           return;
         }
       }
@@ -141,7 +151,11 @@ export default function AuthPage() {
       setMessage("Account created and signed in. Your drafts are saved in this browser.");
       redirectAfterSignIn();
     } catch (error: any) {
-      setMessage(error?.message || "Signup failed in this browser.");
+      setNotice({
+        title: "Sign up failed.",
+        message: error?.message || "Signup failed in this browser.",
+        solution: "Check your details and try again. Your drafts are saved in this browser."
+      });
     }
   }
 
@@ -149,7 +163,11 @@ export default function AuthPage() {
     event.preventDefault();
     const errors = validateLogin({ email, password });
     if (errors.length > 0) {
-      setMessage(`Please fix: ${errors.join(", ")}.`);
+      setNotice({
+        title: "Please check the details.",
+        message: `Please fix: ${errors.join(", ")}.`,
+        solution: "Use a valid email and your password, then try again."
+      });
       return;
     }
     if (serverAvailable !== false) {
@@ -167,7 +185,11 @@ export default function AuthPage() {
         return;
       } catch (error: any) {
         if (error?.code !== "local_only" && error?.code !== "unreachable") {
-          setMessage(error?.message || "Login failed.");
+          setNotice({
+            title: "Sign in failed.",
+            message: error?.message || "Login failed.",
+            solution: error?.solution || "Check your email and password and try again."
+          });
           return;
         }
       }
@@ -179,7 +201,11 @@ export default function AuthPage() {
       setMessage("Signed in. Your drafts in this browser are unchanged.");
       redirectAfterSignIn();
     } catch (error: any) {
-      setMessage(error?.message || "Login failed in this browser.");
+      setNotice({
+        title: "Sign in failed.",
+        message: error?.message || "Login failed in this browser.",
+        solution: "Check your email and password and try again."
+      });
     }
   }
 
@@ -238,6 +264,11 @@ export default function AuthPage() {
           <p className="mt-2 text-ink">Password reset by email is not set up yet. No reset email is sent, so there is no reset link to request here.</p>
           <p className="mt-2 text-ink">If you cannot sign in, book a free consultation and we will help you get back into your account.</p>
           <p className="mt-3"><a className="brand-link" href={editionConfig.footerHelpHref}>{editionConfig.footerHelpLabel}</a></p>
+        </div>
+      )}
+      {notice && (
+        <div className="mt-4">
+          <ErrorNotice title={notice.title} message={notice.message} solution={notice.solution} />
         </div>
       )}
       {message && <p className="mt-4 text-ink">{message}</p>}
