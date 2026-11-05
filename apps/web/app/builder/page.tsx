@@ -9,8 +9,8 @@ import {
   createDefaultSettings,
   createDraft,
   createJobVersion,
-  createSampleProfile,
   moveSection,
+  samplePlaceholders,
   parseDraft,
   parseImport,
   photoIncluded,
@@ -23,17 +23,18 @@ import {
   validateProfile
 } from "../../lib/builder-core.mjs";
 
-// CV builder, Phase 2 increment 17: all 10 version 1 templates, with
+// CV builder, Phase 2 increment 21: all 10 version 1 templates, with
 // an account and master profile link.
 // Drafts autosave in browser localStorage. When signed in,
 // Save to my account stores a copy with the account when you press
 // it. No payment and no connected AI generation in this app yet.
-// Starting data is fictional and marked SAMPLE. User edits are draft
-// edits, never presented as verified real history. A document opened
-// from the dashboard is loaded here through gcs-open-document, and a
-// draft can be saved back to the master profile only after a
-// confirmation prompt, so editing a document never silently changes
-// the master profile.
+// Fields start EMPTY. The grey hint text is an example only, it
+// disappears when the user starts typing, and it is never saved,
+// stored, or exported. User edits are draft edits, never presented
+// as verified real history. A document opened from the dashboard is
+// loaded here through gcs-open-document, and a draft can be saved
+// back to the master profile only after a confirmation prompt, so
+// editing a document never silently changes the master profile.
 
 import { createEmptyProfile, saveDraftToProfile } from "../../lib/auth-core.mjs";
 import { readServerSession, saveServerDocument } from "../../lib/session-client.mjs";
@@ -52,6 +53,7 @@ import {
   isTemplateAllowed
 } from "../../lib/billing-core.mjs";
 import RequireAuth from "../components/RequireAuth";
+import ErrorNotice from "../components/ErrorNotice";
 
 const DRAFT_KEY = "gcs-builder-draft";
 const VERSIONS_KEY = "gcs-builder-versions";
@@ -75,11 +77,11 @@ function clone(value: any) {
 }
 
 export default function BuilderPage() {
-  const [profile, setProfile] = useState<any>(() => createSampleProfile());
+  const [profile, setProfile] = useState<any>(() => createEmptyProfile());
   const [settings, setSettings] = useState<any>(() => createDefaultSettings());
   const [savedState, setSavedState] = useState("Draft not saved yet");
   const [versions, setVersions] = useState<any[]>([]);
-  const [importText, setImportText] = useState(SAMPLE_IMPORT);
+  const [importText, setImportText] = useState("");
   const [parsed, setParsed] = useState<any>(null);
   const [fileParsed, setFileParsed] = useState<any>(null);
   const [fileStatus, setFileStatus] = useState("");
@@ -97,6 +99,7 @@ export default function BuilderPage() {
   const [countryPackId, setCountryPackId] = useState("global");
   const [languageId, setLanguageId] = useState("en");
   const [message, setMessage] = useState("");
+  const [notice, setNotice] = useState<any>(null);
   const [subscriptionPlan, setSubscriptionPlan] = useState("free");
   const [subscriptionTrialEnd, setSubscriptionTrialEnd] = useState("");
   const [existingDocument, setExistingDocument] = useState(false);
@@ -195,7 +198,7 @@ export default function BuilderPage() {
         setJobVersions(JSON.parse(savedJobVersions));
       }
     } catch {
-      setSavedState("Draft in this browser could not be restored, starting from sample.");
+      setSavedState("Draft in this browser could not be restored, starting empty.");
     }
   }, []);
 
@@ -230,6 +233,10 @@ export default function BuilderPage() {
     ...section,
     title: displayTitle(section.key, section.title)
   }));
+  const hints = samplePlaceholders();
+  const contactParts = [profile.email, profile.phone, profile.city].filter(Boolean);
+  const displayName = profile.fullName || "Your name";
+  const displayHeadline = profile.headline || "Your headline";
   const missing = validateProfile(profile);
   const selectedTemplate = templateById(settings.templateId);
   const isBand = ["modern-professional", "corporate", "sidebar"].includes(settings.templateId);
@@ -286,11 +293,14 @@ export default function BuilderPage() {
       setServerDocumentTitle(saved.title || label);
       setMessage(`Saved with your account as "${saved.title || label}". The autosaved draft in this browser is unchanged, and nothing was saved before you pressed this button.`);
     } catch (error: any) {
-      setMessage(
-        error?.code === "local_only" || error?.code === "unreachable"
-          ? "Your account could not be reached, so nothing was saved. Your draft is still autosaved in this browser."
-          : error?.message || "Save failed. Your draft in this browser was not changed."
-      );
+      setNotice({
+        title: "Save failed.",
+        message:
+          error?.code === "local_only" || error?.code === "unreachable"
+            ? "Your account could not be reached, so nothing was saved."
+            : error?.message || "Your draft in this browser was not changed.",
+        solution: error?.solution || "Check your connection and try again. Your draft stays saved in this browser."
+      });
     }
   }
 
@@ -308,7 +318,13 @@ export default function BuilderPage() {
         body: JSON.stringify({ profile, settings, format, subscriptionPlan, existingDocument })
       });
       if (!response.ok) {
-        throw new Error("Export request failed.");
+        const data = await response.json().catch(() => ({}));
+        setNotice({
+          title: "Export failed.",
+          message: data.error || "Export request failed.",
+          solution: data.solution || "Check your connection and try the export again."
+        });
+        return;
       }
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -319,7 +335,11 @@ export default function BuilderPage() {
       window.URL.revokeObjectURL(url);
       setMessage(`${format.toUpperCase()} export downloaded.`);
     } catch {
-      setMessage("Export failed. Your draft was not changed. Please try again.");
+      setNotice({
+        title: "Export failed.",
+        message: "Your draft was not changed.",
+        solution: "Check your connection and try the export again. If it keeps failing, save a version first, then try again."
+      });
     }
   }
 
@@ -359,22 +379,54 @@ export default function BuilderPage() {
     }
     setFileStatus("Reading file, please wait...");
     setFileParsed(null);
+    setNotice(null);
     try {
       const form = new FormData();
       form.append("file", file);
+      form.append("languageId", languageId);
       const response = await fetch("/api/import", { method: "POST", body: form });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || "File import failed.");
+        setNotice({
+          title: "File import failed.",
+          message: data.error || "File import failed.",
+          solution: data.solution || "Check the file and try again. Your draft was not changed."
+        });
+        setFileStatus("");
+        return;
       }
       setFileParsed(data);
+      if (data.languageMismatch) {
+        setNotice({
+          title: "Language mismatch.",
+          message: data.languageMismatch.error,
+          solution: data.languageMismatch.solution
+        });
+      } else if (data.languageUnknown) {
+        setNotice({
+          title: "Language not determined.",
+          message: data.languageUnknown.error,
+          solution: data.languageUnknown.solution
+        });
+      } else if (data.empty) {
+        setNotice({
+          title: "No readable text found.",
+          message: "No readable text was found in this file. It may be a scanned image. No content was invented.",
+          solution: data.solution || "Use the guided paste instead: copy the text from your CV and paste it into the import box."
+        });
+      }
       setFileStatus(
         data.empty
           ? "No readable text was found in this file. It may be a scanned image. No content was invented."
           : "File parsed. Check the fields below, correct them, then use this import."
       );
     } catch {
-      setFileStatus("File import failed. Your draft was not changed. Please check the file and try again.");
+      setNotice({
+        title: "File import failed.",
+        message: "Your draft was not changed.",
+        solution: "Check the file opens on your computer, save it as a fresh PDF or DOCX file, and try again."
+      });
+      setFileStatus("");
     }
   }
 
@@ -398,6 +450,7 @@ export default function BuilderPage() {
     }
     setLinkedinStatus("Reading LinkedIn export files, please wait...");
     setLinkedinParsed(null);
+    setNotice(null);
     try {
       const form = new FormData();
       for (const file of Array.from(fileList)) {
@@ -406,7 +459,13 @@ export default function BuilderPage() {
       const response = await fetch("/api/linkedin-import", { method: "POST", body: form });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || "LinkedIn export import failed.");
+        setNotice({
+          title: "LinkedIn export import failed.",
+          message: data.error || "LinkedIn export import failed.",
+          solution: data.solution || "Check the files and try again. Your draft was not changed."
+        });
+        setLinkedinStatus("");
+        return;
       }
       setLinkedinParsed(data);
       setLinkedinStatus(
@@ -415,7 +474,12 @@ export default function BuilderPage() {
           : "LinkedIn export parsed. Check the fields below, correct them, then use this import."
       );
     } catch {
-      setLinkedinStatus("LinkedIn export import failed. Your draft was not changed. Please check the files and try again.");
+      setNotice({
+        title: "LinkedIn export import failed.",
+        message: "Your draft was not changed.",
+        solution: "Check the files are from your LinkedIn data export, then upload them again."
+      });
+      setLinkedinStatus("");
     }
   }
 
@@ -501,7 +565,13 @@ export default function BuilderPage() {
         body: JSON.stringify({ profile: version.profile, settings: version.settings, format, subscriptionPlan, existingDocument: true })
       });
       if (!response.ok) {
-        throw new Error("Export request failed.");
+        const data = await response.json().catch(() => ({}));
+        setNotice({
+          title: "Job version export failed.",
+          message: data.error || "Export request failed.",
+          solution: data.solution || "Check your connection and try the export again."
+        });
+        return;
       }
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -512,7 +582,11 @@ export default function BuilderPage() {
       window.URL.revokeObjectURL(url);
       setMessage(`Job version ${format.toUpperCase()} export downloaded.`);
     } catch {
-      setMessage("Job version export failed. Your drafts were not changed. Please try again.");
+      setNotice({
+        title: "Job version export failed.",
+        message: "Your drafts were not changed.",
+        solution: "Check your connection and try the export again. If it keeps failing, save a version first, then try again."
+      });
     }
   }
 
@@ -536,8 +610,8 @@ export default function BuilderPage() {
       <h1 className="page-title">Build your CV</h1>
       <p className="mt-3 text-ink">
         {serverSession
-          ? `Signed in as ${serverSession.email}. Starting data is fictional and marked SAMPLE. Drafts autosave in this browser, and Save to my account below stores a copy with your account only when you press it.`
-          : "Starting data is fictional and marked SAMPLE. Drafts are saved in this browser. No price, payment, AI feature, or verified history is claimed here."}
+          ? `Signed in as ${serverSession.email}. Your fields start empty. The grey hint text is an example only, it disappears when you type, and it is never saved or exported. Drafts autosave in this browser, and Save to my account below stores a copy with your account only when you press it.`
+          : "Your fields start empty. The grey hint text is an example only, it disappears when you type, and it is never saved or exported. Drafts are saved in this browser. No price, payment, AI feature, or verified history is claimed here."}
       </p>
       <p className="mt-4 card">
         Current plan: {subscriptionPlan === "trial" ? `Trial, ends ${subscriptionTrialEnd || "date not set"}` : subscriptionPlan === "premium" ? "Premium" : "Free"}. Entitlements are stored in this browser for now. No checkout or payment is shown here.
@@ -552,10 +626,18 @@ export default function BuilderPage() {
         )}
       </p>
       {missing.length > 0 && (
-        <p className="mt-4 notice">
-          Missing for a complete draft: {missing.join(", ")}. You can still
-          edit and export, but check these fields before you use the document.
-        </p>
+        <div className="mt-4">
+          <ErrorNotice
+            title="Some fields are still empty."
+            message={`Missing for a complete draft: ${missing.join(", ")}. You can still edit and export, but check these fields before you use the document.`}
+            solution="Type your name, headline, and summary in the Edit column, then export again."
+          />
+        </div>
+      )}
+      {notice && (
+        <div className="mt-4">
+          <ErrorNotice title={notice.title} message={notice.message} solution={notice.solution} />
+        </div>
       )}
       {message && (
         <p className="mt-4 card">{message}</p>
@@ -681,12 +763,16 @@ export default function BuilderPage() {
           type="button"
           className="btn-secondary"
           onClick={() => {
-            setProfile(createSampleProfile());
+            if (!window.confirm("This clears the fields back to empty, so the example hints show again. Your current draft will be replaced. Continue?")) {
+              return;
+            }
+            setProfile(createEmptyProfile());
             setSettings(createDefaultSettings());
-            setMessage("Reset to sample draft.");
+            setNotice(null);
+            setMessage("Example loaded. The grey hint text is only an example, it disappears when you type, and it is never saved or exported.");
           }}
         >
-          Reset to sample
+          Load an example
         </button>
         <button
           type="button"
@@ -722,23 +808,23 @@ export default function BuilderPage() {
             <h3 className="font-semibold">Personal details</h3>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block text-sm">Full name
-                <input className="mt-1 input-field" value={profile.fullName} onChange={(e) => updateProfile({ fullName: e.target.value })} />
+                <input className="mt-1 input-field" value={displayName} placeholder={hints.fullName} onChange={(e) => updateProfile({ fullName: e.target.value })} />
               </label>
               <label className="block text-sm">Headline
-                <input className="mt-1 input-field" value={profile.headline} onChange={(e) => updateProfile({ headline: e.target.value })} />
+                <input className="mt-1 input-field" value={displayHeadline} placeholder={hints.headline} onChange={(e) => updateProfile({ headline: e.target.value })} />
               </label>
               <label className="block text-sm">Email
-                <input className="mt-1 input-field" value={profile.email} onChange={(e) => updateProfile({ email: e.target.value })} />
+                <input className="mt-1 input-field" value={profile.email} placeholder={hints.email} onChange={(e) => updateProfile({ email: e.target.value })} />
               </label>
               <label className="block text-sm">Phone
-                <input className="mt-1 input-field" value={profile.phone} onChange={(e) => updateProfile({ phone: e.target.value })} />
+                <input className="mt-1 input-field" value={profile.phone} placeholder={hints.phone} onChange={(e) => updateProfile({ phone: e.target.value })} />
               </label>
               <label className="block text-sm sm:col-span-2">City
-                <input className="mt-1 input-field" value={profile.city} onChange={(e) => updateProfile({ city: e.target.value })} />
+                <input className="mt-1 input-field" value={profile.city} placeholder={hints.city} onChange={(e) => updateProfile({ city: e.target.value })} />
               </label>
             </div>
             <label className="mt-3 block text-sm">Summary
-              <textarea className="mt-1 input-field" rows={4} value={profile.summary} onChange={(e) => updateProfile({ summary: e.target.value })} />
+              <textarea className="mt-1 input-field" rows={4} value={profile.summary} placeholder={hints.summary} onChange={(e) => updateProfile({ summary: e.target.value })} />
             </label>
           </section>
 
@@ -747,12 +833,12 @@ export default function BuilderPage() {
             {profile.experience.map((entry: any, index: number) => (
               <div key={index} className="mt-3 card">
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <input className="input-field" aria-label="Employer" value={entry.employer} onChange={(e) => { const next = clone(profile.experience); next[index].employer = e.target.value; updateProfile({ experience: next }); }} />
-                  <input className="input-field" aria-label="Job title" value={entry.jobTitle} onChange={(e) => { const next = clone(profile.experience); next[index].jobTitle = e.target.value; updateProfile({ experience: next }); }} />
-                  <input className="input-field" aria-label="Location" value={entry.location} onChange={(e) => { const next = clone(profile.experience); next[index].location = e.target.value; updateProfile({ experience: next }); }} />
-                  <input className="input-field" aria-label="Period" value={entry.period} onChange={(e) => { const next = clone(profile.experience); next[index].period = e.target.value; updateProfile({ experience: next }); }} />
+                  <input className="input-field" aria-label="Employer" placeholder={hints.employer} value={entry.employer} onChange={(e) => { const next = clone(profile.experience); next[index].employer = e.target.value; updateProfile({ experience: next }); }} />
+                  <input className="input-field" aria-label="Job title" placeholder={hints.jobTitle} value={entry.jobTitle} onChange={(e) => { const next = clone(profile.experience); next[index].jobTitle = e.target.value; updateProfile({ experience: next }); }} />
+                  <input className="input-field" aria-label="Location" placeholder={hints.location} value={entry.location} onChange={(e) => { const next = clone(profile.experience); next[index].location = e.target.value; updateProfile({ experience: next }); }} />
+                  <input className="input-field" aria-label="Period" placeholder={hints.period} value={entry.period} onChange={(e) => { const next = clone(profile.experience); next[index].period = e.target.value; updateProfile({ experience: next }); }} />
                 </div>
-                <textarea className="mt-2 input-field" rows={3} aria-label="Bullets, one per line" value={(entry.bullets || []).join("\n")} onChange={(e) => { const next = clone(profile.experience); next[index].bullets = e.target.value.split("\n").map((line: string) => line.trim()).filter(Boolean); updateProfile({ experience: next }); }} />
+                <textarea className="mt-2 input-field" rows={3} aria-label="Bullets, one per line" placeholder={hints.bullet} value={(entry.bullets || []).join("\n")} onChange={(e) => { const next = clone(profile.experience); next[index].bullets = e.target.value.split("\n").map((line: string) => line.trim()).filter(Boolean); updateProfile({ experience: next }); }} />
                 <button type="button" className="mt-2 text-sm link-danger" onClick={() => updateProfile({ experience: profile.experience.filter((_: any, i: number) => i !== index) })}>Remove this job</button>
               </div>
             ))}
@@ -763,17 +849,17 @@ export default function BuilderPage() {
             <h3 className="font-semibold">Education, skills, languages</h3>
             {profile.education.map((entry: any, index: number) => (
               <div key={index} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <input className="input-field" aria-label="Qualification" value={entry.qualification} onChange={(e) => { const next = clone(profile.education); next[index].qualification = e.target.value; updateProfile({ education: next }); }} />
-                <input className="input-field" aria-label="Institution" value={entry.institution} onChange={(e) => { const next = clone(profile.education); next[index].institution = e.target.value; updateProfile({ education: next }); }} />
-                <input className="input-field" aria-label="Period" value={entry.period} onChange={(e) => { const next = clone(profile.education); next[index].period = e.target.value; updateProfile({ education: next }); }} />
+                <input className="input-field" aria-label="Qualification" placeholder={hints.qualification} value={entry.qualification} onChange={(e) => { const next = clone(profile.education); next[index].qualification = e.target.value; updateProfile({ education: next }); }} />
+                <input className="input-field" aria-label="Institution" placeholder={hints.institution} value={entry.institution} onChange={(e) => { const next = clone(profile.education); next[index].institution = e.target.value; updateProfile({ education: next }); }} />
+                <input className="input-field" aria-label="Period" placeholder={hints.period} value={entry.period} onChange={(e) => { const next = clone(profile.education); next[index].period = e.target.value; updateProfile({ education: next }); }} />
               </div>
             ))}
             <button type="button" className="mt-3 btn-secondary" onClick={() => updateProfile({ education: [...profile.education, { institution: "", qualification: "", period: "" }] })}>Add education</button>
             <label className="mt-4 block text-sm">Skills, comma separated
-              <input className="mt-1 input-field" value={profile.skills.join(", ")} onChange={(e) => updateProfile({ skills: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) })} />
+              <input className="mt-1 input-field" value={profile.skills.join(", ")} placeholder={hints.skills} onChange={(e) => updateProfile({ skills: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) })} />
             </label>
             <label className="mt-3 block text-sm">Languages, comma separated
-              <input className="mt-1 input-field" value={profile.languages.join(", ")} onChange={(e) => updateProfile({ languages: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) })} />
+              <input className="mt-1 input-field" value={profile.languages.join(", ")} placeholder={hints.languages} onChange={(e) => updateProfile({ languages: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) })} />
             </label>
           </section>
 
@@ -822,8 +908,9 @@ export default function BuilderPage() {
               below, also with a correction step. Nothing is imported
               until you check and correct it below.
             </p>
-            <textarea className="mt-3 w-full input-field font-mono text-sm" rows={10} value={importText} onChange={(e) => setImportText(e.target.value)} />
+            <textarea className="mt-3 w-full input-field font-mono text-sm" rows={10} value={importText} placeholder="Paste structured text here. Example format: Name: Your name, Headline: Your headline, Summary: Your summary, Experience: Employer | Job title | Location | Period, Skills: item, item" onChange={(e) => setImportText(e.target.value)} />
             <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" className="btn-secondary" onClick={() => { setImportText(SAMPLE_IMPORT); setMessage("Example text loaded. Replace it with your own CV text, or press Parse import to see how it works."); }}>Load example text</button>
               <label className="btn-secondary">Upload plain text file
                 <input type="file" accept=".txt,text/plain" className="ml-2" onChange={(e) => handleImportFile(e.target.files?.[0])} />
               </label>
@@ -1048,23 +1135,25 @@ export default function BuilderPage() {
           <article className="mt-4 rounded border border-border bg-paper p-6">
             {isBand ? (
               <header className="rounded bg-navy p-4 text-white">
-                <h3 className="text-2xl font-bold">{profile.fullName}</h3>
-                <p>{profile.headline}</p>
+                <h3 className="text-2xl font-bold">{displayName}</h3>
+                <p>{displayHeadline}</p>
               </header>
             ) : isCentered ? (
               <header className="text-center">
-                <h3 className="text-2xl font-bold">{profile.fullName}</h3>
-                <p>{profile.headline}</p>
+                <h3 className="text-2xl font-bold">{displayName}</h3>
+                <p>{displayHeadline}</p>
               </header>
             ) : (
               <header>
-                <h3 className="text-xl font-bold">{profile.fullName}</h3>
-                <p>{profile.headline}</p>
+                <h3 className="text-xl font-bold">{displayName}</h3>
+                <p>{displayHeadline}</p>
               </header>
             )}
             <p className="mt-3 text-sm text-muted">
-              SAMPLE: {profile.email} | {profile.phone} | {profile.city}
-              {photoIncluded(settings.templateId, settings.includePhoto) ? " | [SAMPLE photo placeholder]" : ""}
+              {contactParts.length > 0
+                ? (profile.sampleMarker === "SAMPLE" ? "SAMPLE: " : "") + contactParts.join(" | ")
+                : "Add your contact details"}
+              {photoIncluded(settings.templateId, settings.includePhoto) && profile.sampleMarker === "SAMPLE" ? " | [SAMPLE photo placeholder]" : ""}
             </p>
             <p className="mt-2 text-sm text-muted">
               Template: {selectedTemplate.name}, paper: {settings.paperSize === "US_LETTER" ? "US Letter" : "A4"}
@@ -1077,7 +1166,7 @@ export default function BuilderPage() {
                     <section key={section.key} className="mt-5">
                       <h4 className="font-bold uppercase text-navy">{section.title}</h4>
                       {section.lines.map((line: string, index: number) => (
-                        <p key={index} className="mt-2">{line}</p>
+                        <p key={index} className={section.hint ? "mt-2 text-muted italic" : "mt-2"}>{line}</p>
                       ))}
                     </section>
                   ))}
@@ -1087,7 +1176,7 @@ export default function BuilderPage() {
                     <section key={section.key} className="mt-5">
                       <h4 className="font-bold text-navy">{section.title}</h4>
                       {section.lines.map((line: string, index: number) => (
-                        <p key={index} className="mt-2">{line}</p>
+                        <p key={index} className={section.hint ? "mt-2 text-muted italic" : "mt-2"}>{line}</p>
                       ))}
                       {section.bullets.map((group: string[], groupIndex: number) => (
                         <div key={groupIndex} className="mt-3">
@@ -1106,7 +1195,7 @@ export default function BuilderPage() {
                   <h4 className={`font-bold ${isBand ? "text-navy" : isCentered ? "text-center" : "uppercase"}`}>{section.title}</h4>
                   {isBand && <hr className="mt-1 border-t-2 border-gold" />}
                   {section.lines.map((line: string, index: number) => (
-                    <p key={index} className="mt-2">{line}</p>
+                    <p key={index} className={section.hint ? "mt-2 text-muted italic" : "mt-2"}>{line}</p>
                   ))}
                   {section.bullets.map((group: string[], groupIndex: number) => (
                     <div key={groupIndex} className="mt-3">
