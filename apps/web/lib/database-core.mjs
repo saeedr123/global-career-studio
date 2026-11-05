@@ -27,6 +27,7 @@
 // contain CV text, names, emails, or secrets.
 
 import { createHash, randomBytes } from "node:crypto";
+import { COUNTRY_PACKS } from "./packs-core.mjs";
 
 export const EDITIONS = ["nvconsult", "commercial"];
 
@@ -633,6 +634,72 @@ export async function restoreDocumentVersion(client, userId, documentId, version
       createdBy: String(userId)
     }
   });
+}
+
+// Human help funnel requests, Phase 2 increment 19. A visitor asks
+// for human help through the /human-help funnel, with no account and
+// no sign-in required. Goal is study, work, or business, need is
+// consultation, review, or both, country is a country pack id from
+// packs-core.mjs, never a typed list. The message is optional.
+// Nothing here promises a reply time, a price, or an email, because
+// no email is sent and the turnaround is not decided. The request is
+// saved only, and Ali reads it on the admin page, newest first.
+export const HELP_GOALS = ["study", "work", "business"];
+export const HELP_NEEDS = ["consultation", "review", "both"];
+
+export function isValidHelpGoal(value) {
+  return HELP_GOALS.includes(value);
+}
+
+export function isValidHelpNeed(value) {
+  return HELP_NEEDS.includes(value);
+}
+
+export function isValidHelpCountry(value) {
+  return COUNTRY_PACKS.some((pack) => pack.id === String(value));
+}
+
+export function validateHumanHelpRequest(input) {
+  const data = input || {};
+  const name = String(data.name || "").trim();
+  if (!name) {
+    throw new Error("A name is required.");
+  }
+  if (!isValidEmail(data.email)) {
+    throw new Error("A valid email is required.");
+  }
+  const country = String(data.country || "").trim();
+  if (!isValidHelpCountry(country)) {
+    throw new Error("Choose a target country from the list.");
+  }
+  const goal = String(data.goal || "").trim();
+  if (!isValidHelpGoal(goal)) {
+    throw new Error("Choose a goal: study, work, or business.");
+  }
+  const need = String(data.need || "").trim();
+  if (!isValidHelpNeed(need)) {
+    throw new Error("Choose what you need: a free consultation, a CV review, or both.");
+  }
+  const message = String(data.message || "").trim();
+  return {
+    name,
+    email: normaliseEmail(data.email),
+    country,
+    goal,
+    need,
+    message: message || null
+  };
+}
+
+export async function createHumanHelpRequest(client, input) {
+  requireClient(client);
+  const data = validateHumanHelpRequest(input);
+  return client.humanHelpRequest.create({ data });
+}
+
+export async function listHumanHelpRequests(client) {
+  requireClient(client);
+  return client.humanHelpRequest.findMany({ orderBy: { createdAt: "desc" } });
 }
 
 // Admin groundwork. A server admin action needs a signed in admin
