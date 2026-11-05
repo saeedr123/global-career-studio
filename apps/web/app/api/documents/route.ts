@@ -12,6 +12,7 @@
 import { getDatabaseStatus, getPrismaClient } from "../../../lib/prisma";
 import {
   createDocumentRecord,
+  deleteDocumentRecord,
   getSessionUser,
   listDocumentsForUser,
   localDraftToDocumentInput
@@ -92,4 +93,35 @@ export async function POST(request: Request) {
   const input = localDraftToDocumentInput(body?.draft || {}, user.id, body?.edition || user.edition);
   const created = await createDocumentRecord(client, input);
   return Response.json({ status: "database", document: created }, { status: 201 });
+}
+
+export async function DELETE(request: Request) {
+  const { client, status } = await getClient();
+  if (!client) {
+    return localOnlyResponse(status);
+  }
+  const token = bearerToken(request);
+  if (!token) {
+    return Response.json({ error: "A session token is required." }, { status: 401 });
+  }
+  const user = await getSessionUser(client, token);
+  if (!user) {
+    return Response.json({ error: "That session is not valid or has expired." }, { status: 401 });
+  }
+  let body: any = {};
+  try {
+    body = await request.json();
+  } catch {
+    body = {};
+  }
+  const url = new URL(request.url);
+  const documentId = body?.documentId || url.searchParams.get("documentId") || "";
+  if (!documentId) {
+    return Response.json({ error: "A document id is required." }, { status: 400 });
+  }
+  const result = await deleteDocumentRecord(client, user.id, String(documentId));
+  if (!result.deleted) {
+    return Response.json({ error: "That document was not found." }, { status: 404 });
+  }
+  return Response.json({ status: "database", deleted: true }, { status: 200 });
 }
