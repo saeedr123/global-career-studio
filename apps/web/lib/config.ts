@@ -24,11 +24,10 @@ export interface EditionConfig {
   headerHelpHref: string;
   dashboardIntro: string;
   humanHelpNote: string;
-  // Footer, Increment 16. The operator line is checkable trust
-  // information and belongs to the NVConsult edition only. The
-  // commercial edition leaves it empty and never shows NVConsult
-  // operator details as its own.
-  footerOperatorLine: string;
+  // Footer, Increment 16, line removed in Increment 18. The footer
+  // no longer shows the operator identity. The checkable trust path
+  // is now the nvconsult.eu link in the footer, where the operator
+  // identity lives on About Us and the Privacy Policy.
   footerHelpLabel: string;
   footerHelpHref: string;
   footerNote: string;
@@ -44,7 +43,6 @@ const editionConfigs: Record<Edition, EditionConfig> = {
     headerHelpHref: "https://nvconsult.eu",
     dashboardIntro: "This is the NVConsult edition. Start with the free tier, then ask for a human check before you apply.",
     humanHelpNote: "Human review is offered through NVConsult. Ask for it through the free consultation, and it is arranged personally after the call. No payment is taken in this app.",
-    footerOperatorLine: "NVConsult is a trading name of Saeed Rasul. IČO: 23038594, Brno, Czech Republic. info@nvconsult.eu",
     footerHelpLabel: "Free consultation",
     footerHelpHref: "https://nvconsult.eu",
     footerNote: "Free beta. No payment is taken in this app."
@@ -58,7 +56,6 @@ const editionConfigs: Record<Edition, EditionConfig> = {
     headerHelpHref: "https://nvconsult.eu",
     dashboardIntro: "This is the commercial edition. Start with the free tier, and upgrade only when premium features are needed.",
     humanHelpNote: "Human help is offered through NVConsult. Ask for it through the free consultation linked in the header. No payment is taken in this app.",
-    footerOperatorLine: "",
     footerHelpLabel: "Need human help?",
     footerHelpHref: "https://nvconsult.eu",
     footerNote: "Free beta. No payment is taken in this app."
