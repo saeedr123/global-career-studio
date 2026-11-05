@@ -356,10 +356,13 @@ model HumanHelpRequest {
   goal      String
   need      String
   message   String?
+  // new, contacted, or done, set by an admin on /admin.
+  status    String   @default("new")
   createdAt DateTime @default(now())
 
   @@index([createdAt])
   @@index([email])
+  @@index([status])
 }
 
 model Template {

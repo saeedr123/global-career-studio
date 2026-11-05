@@ -228,3 +228,18 @@ Done and tested, not yet live:
 Tests: new security suite 13 of 13, full runner 353 passed, 0 failed across 19 suites, typecheck passed, production build passed for the nvconsult edition, local server check showed the headers and the 501 local only fallback.
 
 Remaining limitations, stated plainly: the rate limit is in memory per server instance, so it slows abuse but is not a hard guarantee on Vercel; a shared store is the next step if needed. To see the help list, Ali needs one user row with role admin in the database, set once in Neon. The /admin page itself still opens for anyone, but it shows only local browser data and no server data without an admin session. The local browser account in lib/auth-core.mjs still uses SHA-256, which is a lower risk because it never leaves the browser. Password reset still needs an email service.
+
+## Admin area, 2026-11-05, branch feat/admin-area
+
+Ali set his account to role admin in Neon, but nothing in the app used the role except the help list, so the dashboard still looked like a normal account. Built a real admin area:
+- Header shows an Admin link only when /api/me (new) reports the admin role for the signed in session. Display hint only: every admin route checks the role again on the server.
+- /admin loads from /api/admin/overview (new, admin only, 401 for anyone else). Visitors who are signed out, not admins, or on a deployment with no database see a short message and no data.
+- Live overview: accounts, saved documents, open and total help requests. Each part is read on its own, so a table that is not migrated yet shows "Not available" instead of breaking the page.
+- Help requests: newest first, Open or All filter, email as a mail link, and a status of New, Contacted, or Done that an admin changes with PATCH /api/human-help (admin only).
+- Accounts: the newest 200, with name, email, role, edition, and join date, never a password hash.
+- The older browser-only tools (local counts, config versions, feature flags, local change log) are kept, folded into a Browser-only tools section at the bottom.
+- New migration 20261105140000_add_help_request_status adds HumanHelpRequest.status, default new. One manual run of the Neon migrate deploy workflow applies it together with the pending help request migration.
+
+Tests: new admin area suite 11 of 11, full runner 364 passed, 0 failed across 20 suites, typecheck passed, production build passed for the nvconsult edition. The design system tests now allow the /admin link in the header only behind the admin role check.
+
+Still needed from Ali: run the Neon migrate deploy workflow once after this is merged, so help requests and their status work. Until then the admin page shows accounts and documents, and a plain note in place of the help requests.
