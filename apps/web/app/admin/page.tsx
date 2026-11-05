@@ -169,9 +169,11 @@ export default function AdminPage() {
       <p className="mt-4 text-slate-700">
         Database: {databaseStatus ? databaseStatus.message : "Checking database status."} Server admin groundwork is in
         place in the data layer, with an admin role check, a required
-        reason, and an audit row for every server admin action, but it
-        stays inactive until a database is connected and the caller is a
-        real admin user.
+        reason, and an audit row for every server admin action, and in
+        increment 14 the admin check is wired to the database: it loads
+        the user from the database and checks the admin role there.
+        It stays inactive until a database is connected and the caller
+        is a real admin user, and until then this page stays local only.
       </p>
       <p className="mt-4 text-slate-700">
         Counts below are aggregated only. No CV text, no user names, no
