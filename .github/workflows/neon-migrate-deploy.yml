@@ -1,0 +1,58 @@
+# Neon migrate deploy, Phase 2 increment 13.
+# Manual only, through workflow_dispatch on GitHub. This workflow
+# deploys the committed Prisma migrations to the real Neon database,
+# and it runs ONLY when a DATABASE_URL repo secret is present.
+# The owner must add that secret himself on GitHub, at Settings,
+# Secrets and variables, Actions, New repository secret, with the
+# name DATABASE_URL and the value the Neon pooled connection string.
+# He must NEVER paste that connection string in chat or in any file.
+# No live Neon database is connected in this increment, because that
+# secret does not exist yet, so a run now fails plainly at the first
+# step, with the instruction above, and does not fail silently.
+# This workflow never runs on push, so a missing secret never turns
+# an ordinary push red. It never writes a secret to a log, and it
+# never runs a migration against any database except the one named
+# by the DATABASE_URL secret. Prisma migrate deploy applies only
+# migrations already committed in prisma/migrations, it never
+# creates a migration from a live database.
+name: Neon migrate deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  neon-migrate-deploy:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install Prisma CLI in a separate folder
+        run: |
+          mkdir -p prisma-ci
+          cd prisma-ci
+          npm init -y
+          npm install prisma@6.14.0
+      - name: Fail plainly when the DATABASE_URL secret is absent
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL secret is not set, so no migration was run and no database was touched."
+            echo "Add it on GitHub at Settings, Secrets and variables, Actions, New repository secret, name DATABASE_URL, value the Neon pooled connection string."
+            echo "Never paste the connection string in chat or in any file."
+            exit 1
+          fi
+          echo "DATABASE_URL secret is present. Deploying committed migrations only."
+      - name: Validate schema
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma validate --schema prisma/schema.prisma
+      - name: Deploy committed migrations to Neon
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma
+      - name: Confirm the migration status
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma migrate status --schema prisma/schema.prisma
