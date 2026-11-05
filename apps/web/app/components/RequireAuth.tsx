@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { readSignedInSession } from "../../lib/session-client.mjs";
 
-// Sign-in gate, Phase 2 increment 16. Wrap the content of an app
+// Sign-in gate, Phase 2 increment 17. Wrap the content of an app
 // page in this component, and an unauthenticated visitor is sent to
-// the sign-in page instead of seeing the app. A signed-in user, with
-// a server session or a local browser account, keeps working exactly
-// as before, including the local fallback. The landing page and the
+// the sign-in page instead of seeing the app. A signed-in user
+// keeps working exactly as before, including the browser fallback
+// when the account cannot be reached. The landing page and the
 // sign-in page are not wrapped, they stay open without login. The
 // check reads the stored session only, it never asks the server, so
 // it works the same with and without a database connection. The
