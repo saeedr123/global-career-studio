@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@global-career-studio/template-engine": "file:../../packages/template-engine",
+    "@global-career-studio/template-engine": "*",
     "@prisma/client": "^6.14.0",
     "next": "^14.2.35",
     "react": "18.3.1",
@@ -22,10 +22,10 @@
   "scripts": {
     "prisma:generate": "node scripts/prisma-generate.mjs",
     "prebuild": "node scripts/build-engine.mjs && node scripts/prisma-generate.mjs",
-    "build": "node node_modules/next/dist/bin/next build",
-    "dev": "node node_modules/next/dist/bin/next dev",
-    "start": "node node_modules/next/dist/bin/next start",
-    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
+    "build": "node ../../node_modules/next/dist/bin/next build",
+    "dev": "node ../../node_modules/next/dist/bin/next dev",
+    "start": "node ../../node_modules/next/dist/bin/next start",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --noEmit",
     "test:builder": "node scripts/test-builder.mjs",
     "test:import": "node scripts/test-import.mjs",
     "test:auth": "node scripts/test-auth.mjs",
