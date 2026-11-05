@@ -1,0 +1,5 @@
+# Prisma migrate lock file, Phase 2 increment 13.
+# The schema provider is postgresql, and the chosen hosted Postgres
+# is Neon, free plan, region AWS EU Central Frankfurt (eu-central-1).
+# See docs/database-design.md and docs/deployment-preparation.md.
+provider = "postgresql"
