@@ -29,6 +29,7 @@
     "test:billing": "node scripts/test-billing.mjs",
     "test:admin": "node scripts/test-admin.mjs",
     "test:ai": "node scripts/test-ai-provider.mjs",
+    "test:linkedin": "node scripts/test-linkedin.mjs",
     "test:e2e": "node scripts/test-e2e-smoke.mjs",
     "test:all": "node scripts/run-all-tests.mjs"
   },
