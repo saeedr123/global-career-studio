@@ -1,3 +1,55 @@
+# Prisma (Phase 2 increment 13)
+
+This folder holds the Prisma schema, the initial migration, and the
+migration lock file. The chosen hosted Postgres is Neon, free plan,
+region AWS EU Central Frankfurt (eu-central-1), recorded in
+docs/database-design.md and docs/deployment-preparation.md, with
+Supabase as the runner up. No live Neon database is connected in
+this increment, because no DATABASE_URL has been shared and no repo
+secret has been added yet. The owner adds the secret himself on
+GitHub at Settings, Secrets and variables, Actions, New repository
+secret, name DATABASE_URL, value the Neon pooled connection string,
+and never pastes it in chat or in any file.
+
+## Increment 13 migration, honest status
+
+The initial migration at migrations/20261105000000_init/migration.sql
+was authored from prisma/schema.prisma in this increment, because
+the Prisma engine download fails in this workspace and no local
+Prisma run can generate it. It covers all 32 models and all 15
+enums from the schema, checked locally with a script that matched
+every model, enum, enum value, and scalar column against the
+migration file: 32 CREATE TABLE statements, 15 CREATE TYPE
+statements, 31 foreign keys, balanced parentheses. That script
+check is NOT a Prisma run, and the migration is NOT claimed as
+proved until the CI workflow passes. The workflow at
+.github/workflows/prisma-migration.yml runs prisma migrate diff
+from empty to the schema as a review artifact, then runs prisma
+migrate deploy with the committed migration against an ephemeral
+Postgres 15 service container, then runs prisma migrate status.
+That workflow is pushed, and its run is pending on GitHub, not
+claimed as passed, because this environment cannot check a run
+status. Local Prisma generate in increment 13 failed again with
+the same ECONNRESET engine download error as before, so no client
+was generated locally. The @prisma/client package 6.14.0 is now a
+dependency in apps/web/package.json and is installed in the local
+node_modules, but the generated client is absent, because generate
+cannot run here. The app loader in apps/web/lib/prisma.ts returns
+null in that state and the app keeps using local browser storage,
+clearly labelled. No migration was run against any real database,
+and the provider was NOT changed to SQLite.
+
+## Increment 13 data layer
+
+The Prisma client setup is in apps/web/lib/prisma.ts (singleton,
+DATABASE_URL from the environment only, never a value in code).
+The server side data layer is in apps/web/lib/database-core.mjs
+(User, Profile and profile detail rows, Document, DocumentVersion,
+admin audit, ownership checks, no password hash ever returned).
+The status route is at apps/web/app/api/database-status/route.ts.
+Database tests at apps/web/scripts/test-database.mjs passed 25 of
+25 with a mocked client only, never a real database.
+
 # Prisma (Phase 2 increment 12)
 
 This folder holds the Prisma schema only. No migration has been run yet,
