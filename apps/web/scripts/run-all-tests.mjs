@@ -1,8 +1,8 @@
-// Single test runner, Phase 2 increment 11. Run with plain Node:
+// Single test runner, Phase 2 increment 13. Run with plain Node:
 //   node scripts/run-all-tests.mjs
 // Runs every test suite in order: template engine, builder, import,
 // auth, writer, packs, billing, admin, AI provider, LinkedIn import,
-// and the end to end smoke test. Reports pass and fail counts per suite, and exits
+// database, and the end to end smoke test. Reports pass and fail counts per suite, and exits
 // non zero on any failure. No test output file, database, payment,
 // or live service is used here.
 
@@ -25,6 +25,7 @@ const suites = [
   { name: "admin", command: process.execPath, args: ["scripts/test-admin.mjs"], cwd: webDir },
   { name: "ai provider", command: process.execPath, args: ["scripts/test-ai-provider.mjs"], cwd: webDir },
   { name: "linkedin import", command: process.execPath, args: ["scripts/test-linkedin.mjs"], cwd: webDir },
+  { name: "database", command: process.execPath, args: ["scripts/test-database.mjs"], cwd: webDir },
   { name: "end to end smoke", command: process.execPath, args: ["scripts/test-e2e-smoke.mjs"], cwd: webDir }
 ];
 
