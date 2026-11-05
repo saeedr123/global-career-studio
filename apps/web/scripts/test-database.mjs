@@ -59,7 +59,11 @@ function createMockClient() {
     languages: [],
     documents: [],
     versions: [],
-    audit: []
+    audit: [],
+    // Reference rows, seeded the way the seed migration seeds them:
+    // the slug is the id, so a code slug resolves to a real row.
+    templates: [{ id: "european", slug: "european", name: "European" }],
+    countryPacks: [{ id: "us", slug: "us", name: "United States" }]
   };
   const calls = [];
   let counter = 0;
@@ -120,6 +124,12 @@ function createMockClient() {
         store.profiles.push(row);
         return row;
       }
+    },
+    template: {
+      findUnique: async ({ where }) => store.templates.find((item) => item.slug === where.slug) || null
+    },
+    countryPack: {
+      findUnique: async ({ where }) => store.countryPacks.find((item) => item.slug === where.slug) || null
     },
     document: {
       create: async ({ data }) => {
@@ -387,6 +397,16 @@ await check("createDocumentRecord creates a document owned by the user, with sec
   assert.equal(created.templateId, "european");
   assert.equal(created.status, "draft");
   assert.equal(created.sections.length, 2);
+});
+
+await check("createDocumentRecord resolves a template slug to a seeded row, and stores null when no row exists", async () => {
+  const client = createMockClient();
+  const seeded = await createDocumentRecord(client, { userId: "user-1", documentType: "cv", templateId: "european", countryPackId: "us", edition: "commercial" });
+  assert.equal(seeded.templateId, "european");
+  assert.equal(seeded.countryPackId, "us");
+  const unseeded = await createDocumentRecord(client, { userId: "user-1", documentType: "cv", templateId: "ats-minimal", countryPackId: "germany", edition: "commercial" });
+  assert.equal(unseeded.templateId, null);
+  assert.equal(unseeded.countryPackId, null);
 });
 
 await check("listDocumentsForUser returns only the owner documents, and filters by edition", async () => {
