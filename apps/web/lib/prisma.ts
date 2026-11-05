@@ -13,15 +13,22 @@
 // local browser fallback working, clearly labelled. That is the
 // honest state, not a silent failure: databaseStatus explains which
 // of the two pieces is missing, configured or clientAvailable.
-// The client package is loaded through a variable specifier on
-// purpose, so the app still builds and typechecks in this workspace
-// where the Prisma engine download fails and the client cannot be
-// generated yet. Do NOT change this to a static import until the
-// generated client exists where the build runs. Do NOT fake a
-// generated client, and do NOT claim the app is live on a real
-// database while this loader returns null.
-
-const CLIENT_SPECIFIER = "@prisma/client";
+// The client package is loaded through a literal dynamic import,
+// inside a try/catch, so the app still builds and runs in this
+// workspace where the Prisma engine download fails and the client
+// cannot be generated yet: the import is only executed at request
+// time, never at build time, and a failure returns null so callers
+// keep the local browser fallback. The literal specifier matters:
+// the earlier variable specifier made webpack warn "the request of
+// a dependency is an expression" and made Vercel file tracing skip
+// the generated client, so the live app reported clientAvailable
+// false even though prebuild had generated the client. With a
+// literal specifier, and @prisma/client kept external in
+// next.config.mjs, the require stays a runtime require that Vercel
+// tracing follows into node_modules. Do NOT change this to a static
+// import, which would break the build where the client is not
+// generated. Do NOT fake a generated client, and do NOT claim the
+// app is live on a real database while this loader returns null.
 
 let cachedClient: any = null;
 let cachedClientTried = false;
@@ -50,7 +57,7 @@ export async function getPrismaClient(env?: any) {
     return null;
   }
   try {
-    const mod = await import(CLIENT_SPECIFIER);
+    const mod = await import("@prisma/client");
     const PrismaClient = mod.PrismaClient || mod.default;
     if (!PrismaClient) {
       cachedClientTried = true;
