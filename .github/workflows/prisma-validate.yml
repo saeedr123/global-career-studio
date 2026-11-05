@@ -52,15 +52,18 @@ jobs:
       - name: Validate schema
         env:
           DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+          DIRECT_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
         run: |
           ./prisma-ci/node_modules/.bin/prisma validate --schema prisma/schema.prisma
       - name: Generate Prisma client with a dummy URL
         env:
           DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+          DIRECT_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
         run: |
           ./prisma-ci/node_modules/.bin/prisma generate --schema prisma/schema.prisma
       - name: Apply schema to the ephemeral test database only
         env:
           DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+          DIRECT_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
         run: |
           ./prisma-ci/node_modules/.bin/prisma db push --schema prisma/schema.prisma --skip-generate
