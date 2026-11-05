@@ -10,6 +10,7 @@
 // this environment, this route answers 501 local only, and the
 // local browser documents keep working, clearly labelled.
 import { getDatabaseStatus, getPrismaClient } from "../../../lib/prisma";
+import { documentErrors } from "../../../lib/error-format.mjs";
 import {
   createDocumentRecord,
   deleteDocumentRecord,
@@ -46,7 +47,9 @@ function localOnlyResponse(database: any) {
       status: "local_only",
       database: database.status,
       message:
-        "Documents are local only here. No database is configured, or the generated Prisma client is not available in this environment, so documents stay in this browser only."
+        "Documents are local only here. No database is configured, or the generated Prisma client is not available in this environment, so documents stay in this browser only.",
+      solution:
+        "Try again later, when the server is available. Your drafts stay saved in this browser in the meantime."
     },
     { status: 501 }
   );
@@ -59,11 +62,11 @@ export async function GET(request: Request) {
   }
   const token = bearerToken(request);
   if (!token) {
-    return Response.json({ error: "A session token is required." }, { status: 401 });
+    return Response.json(documentErrors().tokenRequired(), { status: 401 });
   }
   const user = await getSessionUser(client, token);
   if (!user) {
-    return Response.json({ error: "That session is not valid or has expired." }, { status: 401 });
+    return Response.json(documentErrors().sessionInvalid(), { status: 401 });
   }
   const url = new URL(request.url);
   const edition = url.searchParams.get("edition") || undefined;
@@ -78,24 +81,24 @@ export async function POST(request: Request) {
   }
   const token = bearerToken(request);
   if (!token) {
-    return Response.json({ error: "A session token is required." }, { status: 401 });
+    return Response.json(documentErrors().tokenRequired(), { status: 401 });
   }
   const user = await getSessionUser(client, token);
   if (!user) {
-    return Response.json({ error: "That session is not valid or has expired." }, { status: 401 });
+    return Response.json(documentErrors().sessionInvalid(), { status: 401 });
   }
   let body: any = {};
   try {
     body = await request.json();
   } catch {
-    return Response.json({ error: "Request body must be JSON." }, { status: 400 });
+    return Response.json(documentErrors().bodyNotJson(), { status: 400 });
   }
   const input = localDraftToDocumentInput(body?.draft || {}, user.id, body?.edition || user.edition);
   try {
     const created = await createDocumentRecord(client, input);
     return Response.json({ status: "database", document: created }, { status: 201 });
   } catch {
-    return Response.json({ error: "The document could not be saved on the server. Your local draft was not changed." }, { status: 500 });
+    return Response.json(documentErrors().saveFailed(), { status: 500 });
   }
 }
 
@@ -106,11 +109,11 @@ export async function DELETE(request: Request) {
   }
   const token = bearerToken(request);
   if (!token) {
-    return Response.json({ error: "A session token is required." }, { status: 401 });
+    return Response.json(documentErrors().tokenRequired(), { status: 401 });
   }
   const user = await getSessionUser(client, token);
   if (!user) {
-    return Response.json({ error: "That session is not valid or has expired." }, { status: 401 });
+    return Response.json(documentErrors().sessionInvalid(), { status: 401 });
   }
   let body: any = {};
   try {
@@ -121,15 +124,15 @@ export async function DELETE(request: Request) {
   const url = new URL(request.url);
   const documentId = body?.documentId || url.searchParams.get("documentId") || "";
   if (!documentId) {
-    return Response.json({ error: "A document id is required." }, { status: 400 });
+    return Response.json(documentErrors().idRequired(), { status: 400 });
   }
   try {
     const result = await deleteDocumentRecord(client, user.id, String(documentId));
     if (!result.deleted) {
-      return Response.json({ error: "That document was not found." }, { status: 404 });
+      return Response.json(documentErrors().notFound(), { status: 404 });
     }
     return Response.json({ status: "database", deleted: true }, { status: 200 });
   } catch {
-    return Response.json({ error: "That document was not found." }, { status: 404 });
+    return Response.json(documentErrors().notFound(), { status: 404 });
   }
 }
