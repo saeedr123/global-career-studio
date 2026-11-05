@@ -23,11 +23,11 @@ import {
   validateProfile
 } from "../../lib/builder-core.mjs";
 
-// CV builder, Phase 2 increment 6: all 10 version 1 templates, with
-// a local account and master profile link.
-// Drafts autosave in browser localStorage. With a server account,
-// Save to server stores a copy on the server when you press it.
-// No payment and no connected AI generation in this app yet.
+// CV builder, Phase 2 increment 17: all 10 version 1 templates, with
+// an account and master profile link.
+// Drafts autosave in browser localStorage. When signed in,
+// Save to my account stores a copy with the account when you press
+// it. No payment and no connected AI generation in this app yet.
 // Starting data is fictional and marked SAMPLE. User edits are draft
 // edits, never presented as verified real history. A document opened
 // from the dashboard is loaded here through gcs-open-document, and a
@@ -159,11 +159,11 @@ export default function BuilderPage() {
           setSettings(nextSettings);
           setExistingDocument(true);
           setServerDocumentTitle(document.title || document.label || "Untitled document");
-          setSavedState(`Opened server document: ${document.title || document.label || "document"}.`);
+          setSavedState(`Opened saved document: ${document.title || document.label || "document"}.`);
           setMessage(
             templateApplied
-              ? "Server document opened. Its template, paper size, and section order were applied. The profile fields below stay local, because a server document stores settings only, not the full profile. Load the server profile from the profile page to fill them in."
-              : "Server document opened. Its paper size and section order were applied, but no template was stored on the server for it, so the default template is shown. Pick the template you want below. The profile fields stay local, because a server document stores settings only, not the full profile. Load the server profile from the profile page to fill them in."
+              ? "Saved document opened. Its template, paper size, and section order were applied. The profile fields below stay in this browser, because a saved document stores settings only, not the full profile. Load your profile from the profile page to fill them in."
+              : "Saved document opened. Its paper size and section order were applied, but no template was stored with it, so the default template is shown. Pick the template you want below. The profile fields stay in this browser, because a saved document stores settings only, not the full profile. Load your profile from the profile page to fill them in."
           );
           setActiveJobVersionId("");
         } else if (document && document.profile) {
@@ -195,7 +195,7 @@ export default function BuilderPage() {
         setJobVersions(JSON.parse(savedJobVersions));
       }
     } catch {
-      setSavedState("Local draft could not be restored, starting from sample.");
+      setSavedState("Draft in this browser could not be restored, starting from sample.");
     }
   }, []);
 
@@ -270,7 +270,7 @@ export default function BuilderPage() {
 
   async function saveToServer() {
     if (!serverSession) {
-      setMessage("No server session was found. Sign in on the server first, on the account page. Your draft is still autosaved in this browser.");
+      setMessage("No signed-in session was found. Sign in first, on the account page. Your draft is still autosaved in this browser.");
       return;
     }
     let label = serverDocumentTitle || "Master draft";
@@ -279,17 +279,17 @@ export default function BuilderPage() {
     } catch {
       label = serverDocumentTitle || "Master draft";
     }
-    setMessage("Saving this draft to the server...");
+    setMessage("Saving this draft with your account...");
     try {
       const draft = createDraft(profile, settings, label);
       const saved = await saveServerDocument(undefined, serverSession, draft, edition);
       setServerDocumentTitle(saved.title || label);
-      setMessage(`Saved to the server as "${saved.title || label}". The local autosaved draft is unchanged, and nothing was uploaded automatically before you pressed this button.`);
+      setMessage(`Saved with your account as "${saved.title || label}". The autosaved draft in this browser is unchanged, and nothing was saved before you pressed this button.`);
     } catch (error: any) {
       setMessage(
         error?.code === "local_only" || error?.code === "unreachable"
-          ? "The server could not be reached, so nothing was saved to the server. Your draft is still autosaved in this browser."
-          : error?.message || "Save to server failed. Your local draft was not changed."
+          ? "Your account could not be reached, so nothing was saved. Your draft is still autosaved in this browser."
+          : error?.message || "Save failed. Your draft in this browser was not changed."
       );
     }
   }
@@ -531,18 +531,18 @@ export default function BuilderPage() {
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <RequireAuth>
       <p className="eyebrow">
-        CV builder{serverSession ? ", signed in on the server" : ", local draft only"}
+        CV builder
       </p>
       <h1 className="page-title">Build your CV</h1>
       <p className="mt-3 text-ink">
         {serverSession
-          ? `Signed in on the server as ${serverSession.email}. Starting data is fictional and marked SAMPLE. Drafts autosave in this browser, and Save to server below stores a copy on the server only when you press it.`
-          : "Local draft account. Starting data is fictional and marked SAMPLE. Drafts are saved in this browser only until you sign in on the server. No price, payment, AI feature, or verified history is claimed here."}
+          ? `Signed in as ${serverSession.email}. Starting data is fictional and marked SAMPLE. Drafts autosave in this browser, and Save to my account below stores a copy with your account only when you press it.`
+          : "Starting data is fictional and marked SAMPLE. Drafts are saved in this browser. No price, payment, AI feature, or verified history is claimed here."}
       </p>
       <p className="mt-4 card">
-        Current local plan: {subscriptionPlan === "trial" ? `Trial, ends ${subscriptionTrialEnd || "date not set"}` : subscriptionPlan === "premium" ? "Premium, local only" : "Free, local only"}. Entitlements are local browser state only, until a real database and Stripe are connected. No checkout or payment is shown here.
+        Current plan: {subscriptionPlan === "trial" ? `Trial, ends ${subscriptionTrialEnd || "date not set"}` : subscriptionPlan === "premium" ? "Premium" : "Free"}. Entitlements are stored in this browser for now. No checkout or payment is shown here.
         {!isTemplateAllowed(subscriptionPlan, settings.templateId) && !existingDocument && (
-          <span className="mt-2 block"> This template is locked on the Free plan. It is a premium template. Choose a free template for a new document, or open the subscription page to check your local plan. A document you already created stays viewable here.</span>
+          <span className="mt-2 block"> This template is locked on the Free plan. It is a premium template. Choose a free template for a new document, or open the subscription page to check your plan. A document you already created stays viewable here.</span>
         )}
         {existingDocument && (
           <span className="mt-2 block"> This document was opened from the dashboard, so it stays viewable and downloadable here, even if its template is locked for a new document.</span>
@@ -612,7 +612,7 @@ export default function BuilderPage() {
               className="mt-2 ml-2 btn-primary"
               onClick={saveToServer}
             >
-              Save to server
+              Save to my account
             </button>
           )}
         </div>
