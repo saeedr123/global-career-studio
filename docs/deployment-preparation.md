@@ -20,12 +20,14 @@ In increment 12, a GitHub Actions workflow was added at
 .github/workflows/prisma-validate.yml to run validate, generate,
 and db push against an ephemeral Postgres service container on
 GitHub, because this environment cannot run GitHub Actions or
-check a run status. BLOCKED UPLOAD IN THIS INCREMENT: that
-workflow file was NOT pushed to GitHub, because the helper
-returned status 403, Resource not accessible by personal access
-token, for .github/workflows/prisma-validate.yml. No CI run is
-pending, and no CI run is claimed as passed, until that file
-reaches GitHub. The provider was NOT
+check a run status. WORKFLOW PUSHED AFTER TOKEN UPDATE: the first
+upload in increment 12 was blocked with status 403, Resource not
+accessible by personal access token, because the token did not
+yet have Workflows access. Ali updated the token to include
+Workflows Read and write on 2026-11-05, and the retry returned
+status 201, sha 8959c8154e9fa18aa482f3742ee8eba48d64aad7. A CI run
+should have started on GitHub on that push. No CI run is claimed
+as passed, because no run result has been read. The provider was NOT
 changed to SQLite, checksums were NOT ignored, and no migration
 was run against any real database in increment 12.
 All accounts, drafts, job versions, letters, and admin state remain
