@@ -31,6 +31,10 @@ export interface EditionConfig {
   footerHelpLabel: string;
   footerHelpHref: string;
   footerNote: string;
+  // Footer brand block, Increment 20. The lived-journey line is
+  // the NVConsult edition only, matching the main site footer. The
+  // commercial edition leaves it empty and shows its own tagline.
+  footerJourneyLine: string;
 }
 
 const editionConfigs: Record<Edition, EditionConfig> = {
@@ -45,7 +49,8 @@ const editionConfigs: Record<Edition, EditionConfig> = {
     humanHelpNote: "Human review is offered through NVConsult. Ask for it through the human help form, with a free consultation or on its own. No payment is taken in this app.",
     footerHelpLabel: "Free consultation",
     footerHelpHref: "/human-help",
-    footerNote: "Free beta. No payment is taken in this app."
+    footerNote: "Free beta. No payment is taken in this app.",
+    footerJourneyLine: "Guidance for students and workers, from someone who has lived the journey from work visa to permanent residence."
   },
   commercial: {
     edition: "commercial",
@@ -58,7 +63,8 @@ const editionConfigs: Record<Edition, EditionConfig> = {
     humanHelpNote: "Human help is offered through NVConsult. Ask for it through the human help form linked in the header. No payment is taken in this app.",
     footerHelpLabel: "Need human help?",
     footerHelpHref: "/human-help",
-    footerNote: "Free beta. No payment is taken in this app."
+    footerNote: "Free beta. No payment is taken in this app.",
+    footerJourneyLine: ""
   }
 };
 
