@@ -15,7 +15,7 @@ import {
 } from "../lib/linkedin-core.mjs";
 
 const engine = await import("../../../packages/template-engine/dist/index.js");
-const AdmZip = (await import("../../../packages/template-engine/node_modules/adm-zip/adm-zip.js")).default;
+const AdmZip = (await import("adm-zip")).default;
 
 const PROFILE_CSV = [
   "First Name,Last Name,Headline,Summary,Geo Location",
