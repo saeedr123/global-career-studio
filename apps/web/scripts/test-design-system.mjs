@@ -118,7 +118,7 @@ const footer = read("app/components/SiteFooter.tsx");
 
 check("header takes its wordmark from the edition config, never hard coded", () => {
   assert.ok(header.includes("editionConfig.brandName"), "header does not read brandName from config");
-  assert.ok(!header.includes("NVConsult Career Tools"), "header hard codes the nvconsult brand name");
+  assert.ok(!header.includes("NVConsult CV Builder"), "header hard codes the nvconsult brand name");
   assert.ok(!header.includes("Global Career Studio"), "header hard codes the commercial brand name");
 });
 
