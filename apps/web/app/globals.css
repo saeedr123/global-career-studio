@@ -169,6 +169,29 @@ body {
     font-weight: 700;
     color: var(--color-navy);
   }
+  /* Richer card headers, Increment 20. A short gold rule under
+     every card title, so cards read as a designed set rather than
+     plain boxes. The rule uses the gold token only. */
+  .card-title::after {
+    content: "";
+    display: block;
+    width: 2rem;
+    height: 0.25rem;
+    margin-top: 0.5rem;
+    background: var(--color-gold);
+    border-radius: 9999px;
+  }
+  /* Stronger section divider, Increment 20. A thin gold line that
+     fades out, used between landing sections so the page reads in
+     clear bands instead of one long flow. */
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      var(--color-gold),
+      rgba(217, 164, 65, 0) 60%
+    );
+  }
   .hero-title {
     font-size: clamp(2rem, 6vw, 3rem);
     line-height: 1.15;
@@ -220,13 +243,23 @@ body {
     padding: 1rem;
     color: var(--color-ink);
   }
+  /* Richer hero, Increment 20. Gold light from the top right, a
+     softer gold wash from the bottom left, and a navy to navy-dark
+     gradient behind, with a gold rule along the bottom edge, so the
+     hero reads as a designed band rather than a flat block. */
   .hero {
     background: radial-gradient(
         48rem 26rem at 85% -10%,
-        rgba(217, 164, 65, 0.22),
+        rgba(217, 164, 65, 0.28),
         rgba(217, 164, 65, 0) 60%
       ),
-      var(--color-navy);
+      radial-gradient(
+        36rem 20rem at 0% 110%,
+        rgba(217, 164, 65, 0.12),
+        rgba(217, 164, 65, 0) 55%
+      ),
+      linear-gradient(180deg, var(--color-navy), var(--color-navy-dark));
+    border-bottom: 3px solid var(--color-gold);
     color: #ffffff;
   }
   .hero-rule {
