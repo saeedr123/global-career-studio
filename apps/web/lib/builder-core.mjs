@@ -3,8 +3,8 @@
 // can be tested with plain Node and used by the React builder page.
 // Sample data only. The starting profile is fictional and marked SAMPLE.
 // User edits in the builder are local draft edits, not real history, and
-// drafts are stored in the browser only in this increment, until a real
-// database is connected after Prisma validation passes.
+// drafts autosave in the browser. The builder page can also save a copy
+// to the server through the documents API when the user presses it.
 
 export const DEFAULT_SECTION_ORDER = [
   "summary",
