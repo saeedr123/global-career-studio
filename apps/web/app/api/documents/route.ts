@@ -91,8 +91,12 @@ export async function POST(request: Request) {
     return Response.json({ error: "Request body must be JSON." }, { status: 400 });
   }
   const input = localDraftToDocumentInput(body?.draft || {}, user.id, body?.edition || user.edition);
-  const created = await createDocumentRecord(client, input);
-  return Response.json({ status: "database", document: created }, { status: 201 });
+  try {
+    const created = await createDocumentRecord(client, input);
+    return Response.json({ status: "database", document: created }, { status: 201 });
+  } catch {
+    return Response.json({ error: "The document could not be saved on the server. Your local draft was not changed." }, { status: 500 });
+  }
 }
 
 export async function DELETE(request: Request) {
@@ -119,9 +123,13 @@ export async function DELETE(request: Request) {
   if (!documentId) {
     return Response.json({ error: "A document id is required." }, { status: 400 });
   }
-  const result = await deleteDocumentRecord(client, user.id, String(documentId));
-  if (!result.deleted) {
+  try {
+    const result = await deleteDocumentRecord(client, user.id, String(documentId));
+    if (!result.deleted) {
+      return Response.json({ error: "That document was not found." }, { status: 404 });
+    }
+    return Response.json({ status: "database", deleted: true }, { status: 200 });
+  } catch {
     return Response.json({ error: "That document was not found." }, { status: 404 });
   }
-  return Response.json({ status: "database", deleted: true }, { status: 200 });
 }
