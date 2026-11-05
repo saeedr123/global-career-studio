@@ -1,4 +1,4 @@
-# Global Career Studio web app (builder, auth, dashboard, writer, letters, ATS, packs, billing config, admin local only, AI provider ready not live, increment 11)
+# Global Career Studio web app (builder, auth, dashboard, writer, letters, ATS, packs, billing config, admin local only, AI provider ready not live, LinkedIn export import, increment 12)
 
 Status: Phase 2 increment 11. This is NOT a finished product and
 NOT launch ready. There are no payments, no live connected AI, and
@@ -18,6 +18,48 @@ sets a budget cap. No budget cap has been set yet.
 
 ## What is in this increment
 
+- LinkedIn export import, increment 12, official data export only:
+  parser in `lib/linkedin-core.mjs` with a proper CSV parser
+  (quoted fields, embedded commas, embedded newlines, multiline
+  descriptions), mapping Profile.csv to personal details and
+  summary, Positions.csv to experience with an empty Finished On
+  meaning a current role, Education.csv to education with Notes
+  and Activities kept in an Education notes custom section,
+  Skills.csv to skills, Certifications.csv to a custom section,
+  and Languages.csv to languages, with missing files and missing
+  columns warned about and never invented, and unknown columns
+  warned about and not used. Individual CSV uploads or a ZIP
+  upload, extracted server side with adm-zip through a new helper
+  in the template engine file import module, no new dependency
+  added. API route at `app/api/linkedin-import/route.ts` parses
+  only and stores nothing. The builder page documents the exact
+  user flow (LinkedIn on desktop, Settings and Privacy, Data
+  Privacy, Get a copy of your data, pick at least Profile,
+  Positions, Education, Skills, Certifications, and Languages,
+  request the archive, unzip it, upload the CSV files here),
+  states plainly that the export contains the user's own data,
+  that the profile photo is not in the export, and that dates in
+  Month YYYY form are kept as written for correction, and applies
+  the import as a draft only after user confirmation. Studio does
+  not contact LinkedIn, does not scrape, and does not use an
+  unofficial API. LinkedIn API import is still NOT built.
+  LinkedIn tests at `scripts/test-linkedin.mjs` passed 10 of 10.
+  A live server test returned 200 for the import route and 200
+  for the builder page with the LinkedIn export section present.
+  The test server was stopped after the test.
+- Prisma workflow, increment 12, at the project root in
+  `.github/workflows/prisma-validate.yml`: on push and pull
+  request to main, checks out the repo, sets up Node 24, installs
+  Prisma 6.14.0 in a separate folder (there is no package.json at
+  the repo root), runs prisma validate, runs prisma generate with
+  a dummy test database URL, and runs prisma db push against a
+  Postgres service container in the same workflow, ephemeral test
+  database only. The workflow YAML was parsed locally and passed.
+  The workflow is pushed to GitHub and its first CI run is
+  pending on GitHub, because this environment cannot run GitHub
+  Actions or check a run status. The CI run is NOT claimed as
+  passed. The schema provider was NOT changed to SQLite, and no
+  migration was run against any real database.
 - AI provider abstraction, increment 11, provider finalized, live
   call not faked: provider logic in `lib/ai-provider-core.mjs`,
   with Muse AI as the selected provider, configured only through
@@ -65,12 +107,12 @@ sets a budget cap. No budget cap has been set yet.
   that free resume review and free LinkedIn review remain free
   extras. Turnaround and paid price are explicit owner to confirm
   placeholders.
-- LinkedIn import decision, increment 11, in
-  `docs/linkedin-import-decision.md` at the project root: no
-  LinkedIn API import is built, because no permitted API path has
-  been tested, and guided paste import and PDF/DOCX import remain
-  the working fallbacks. No scraping, no unofficial API, and no
-  claim that LinkedIn import works.
+- LinkedIn import decision, updated in increment 12, in
+  `docs/linkedin-import-decision.md` at the project root: LinkedIn
+  export import is built, with the same correction step as the
+  other imports. No LinkedIn API import is built, because no
+  permitted API path has been tested. No scraping, no unofficial
+  API, and no claim that an API import works.
 - Hosting plan for the nvconsult.eu first launch, increment 11,
   in `docs/deployment-preparation.md` section 10 at the project
   root: production build, environment variables by name only
@@ -161,9 +203,9 @@ sets a budget cap. No budget cap has been set yet.
   example a scanned image PDF, is reported as empty, with no content
   invented. Custom sections are detected when they follow the
   standard sections in default order; custom sections elsewhere are
-  left unparsed for correction, not guessed. LinkedIn import is
-  planned, not built, and guided paste is the working fallback, with
-  an honest limitation note on the builder page.
+  left unparsed for correction, not guessed. LinkedIn export import
+  is built in increment 12 in its own builder section, with the same
+  correction step. LinkedIn API import is still not built.
 - Local auth, master profile, and working dashboard in increment 6:
   account page at `app/auth/page.tsx` with signup, login, logout,
   and password reset, using hashed passwords in `lib/auth-core.mjs`
@@ -334,9 +376,27 @@ npm run test:packs
 npm run test:billing
 npm run test:admin
 npm run test:ai
+npm run test:linkedin
 npm run test:e2e
 ```
 
+In increment 12, typecheck passed with no failure, the single test
+runner passed 212 of 212 across 11 suites (template engine 64 of 64,
+builder 25 of 25, import 6 of 6, auth 12 of 12, writer 15 of 15,
+packs 20 of 20, billing 21 of 21, admin 19 of 19, ai provider 9 of 9,
+linkedin import 10 of 10, end to end smoke 11 of 11), and the
+production build passed for both editions (commercial routes `/`,
+`/admin` 3.24 kB, `/builder` 13.9 kB, `/dashboard` 5.38 kB,
+`/auth` 4.97 kB, `/profile` 3.54 kB, `/writer` 7.5 kB,
+`/letters` 7.52 kB, `/ats` 4.91 kB, `/onboarding` 3.56 kB,
+`/subscription` 4.15 kB, plus `/api/ai-status`, `/api/export`,
+`/api/import`, `/api/linkedin-import`, `/api/letter-export`, and
+`/api/auth`; nvconsult routes `/admin` 3.24 kB, `/dashboard`
+4.6 kB and `/auth` 4.16 kB, same other routes). A live server test
+returned 200 for the linkedin-import route with the correct sample
+name and a current role period, and 200 for the builder page with
+the LinkedIn export section present. The test server was stopped
+after the test.
 In increment 11, typecheck passed with no failure, the single test
 runner passed 202 of 202 across 10 suites (template engine 64 of 64,
 builder 25 of 25, import 6 of 6, auth 12 of 12, writer 15 of 15,
@@ -454,7 +514,7 @@ and three columns on desktops.
 - `lib/admin-core.mjs`: admin logic, tested with plain Node, with
   aggregated counts, config versioning, feature flags, and audit
   logging, and no CV content or secrets stored.
-- `scripts/run-all-tests.mjs`: single test runner for all 9 suites,
+- `scripts/run-all-tests.mjs`: single test runner for all 11 suites,
   with per suite pass and fail counts, exiting non zero on failure.
 - `scripts/test-admin.mjs`: admin tests for counts, versioning,
   flags, and audit entries.
@@ -477,6 +537,14 @@ and three columns on desktops.
 - `app/api/import/route.ts`: PDF and DOCX file import, text
   extraction and parsing only, nothing stored, nothing becomes a
   draft until the user corrects it on the builder page.
+- `app/api/linkedin-import/route.ts`: LinkedIn export CSV and ZIP
+  import, parsing only, nothing stored, nothing becomes a draft
+  until the user corrects it on the builder page. No LinkedIn API
+  import, no scraping, no unofficial API.
+- `lib/linkedin-core.mjs`: LinkedIn export CSV parser and mapping,
+  tested with plain Node, with missing and unknown column warnings.
+- `scripts/test-linkedin.mjs`: LinkedIn export import tests, using
+  fictional sample CSVs marked SAMPLE, plus a ZIP of those CSVs.
 - `app/components/EditionHeader.tsx` and `app/components/PlaceholderCard.tsx`.
 - `app/globals.css`, `tailwind.config.js`, `postcss.config.js`: styling setup.
 - `lib/config.ts`: edition configuration and placeholder flags only.
