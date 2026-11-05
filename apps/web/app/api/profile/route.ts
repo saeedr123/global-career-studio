@@ -11,6 +11,7 @@
 // never converted into invented dates. No password hash is ever
 // returned here.
 import { getDatabaseStatus, getPrismaClient } from "../../../lib/prisma";
+import { profileErrors } from "../../../lib/error-format.mjs";
 import {
   getProfileByUserId,
   getSessionUser,
@@ -46,7 +47,9 @@ function localOnlyResponse(database: any) {
       status: "local_only",
       database: database.status,
       message:
-        "Profile is local only here. No database is configured, or the generated Prisma client is not available in this environment, so the profile stays in this browser only."
+        "Profile is local only here. No database is configured, or the generated Prisma client is not available in this environment, so the profile stays in this browser only.",
+      solution:
+        "Try again later, when the server is available. Your profile stays saved in this browser in the meantime."
     },
     { status: 501 }
   );
@@ -59,11 +62,11 @@ export async function GET(request: Request) {
   }
   const token = bearerToken(request);
   if (!token) {
-    return Response.json({ error: "A session token is required." }, { status: 401 });
+    return Response.json(profileErrors().tokenRequired(), { status: 401 });
   }
   const user = await getSessionUser(client, token);
   if (!user) {
-    return Response.json({ error: "That session is not valid or has expired." }, { status: 401 });
+    return Response.json(profileErrors().sessionInvalid(), { status: 401 });
   }
   const stored = await getProfileByUserId(client, user.id);
   if (!stored) {
@@ -85,18 +88,22 @@ export async function POST(request: Request) {
   }
   const token = bearerToken(request);
   if (!token) {
-    return Response.json({ error: "A session token is required." }, { status: 401 });
+    return Response.json(profileErrors().tokenRequired(), { status: 401 });
   }
   const user = await getSessionUser(client, token);
   if (!user) {
-    return Response.json({ error: "That session is not valid or has expired." }, { status: 401 });
+    return Response.json(profileErrors().sessionInvalid(), { status: 401 });
   }
   let body: any = {};
   try {
     body = await request.json();
   } catch {
-    return Response.json({ error: "Request body must be JSON." }, { status: 400 });
+    return Response.json(profileErrors().bodyNotJson(), { status: 400 });
   }
-  const saved = await saveProfileRecord(client, user.id, body?.profile || {});
-  return Response.json({ status: "database", profileId: saved.id }, { status: 200 });
+  try {
+    const saved = await saveProfileRecord(client, user.id, body?.profile || {});
+    return Response.json({ status: "database", profileId: saved.id }, { status: 200 });
+  } catch {
+    return Response.json(profileErrors().saveFailed(), { status: 500 });
+  }
 }
