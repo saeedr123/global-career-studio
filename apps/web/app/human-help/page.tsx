@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { COUNTRY_PACKS } from "../../lib/packs-core.mjs";
+import ErrorNotice from "../components/ErrorNotice";
 
 // Human help funnel, Phase 2 increment 19. A public page, no
 // sign-in required. Step 1 asks what the visitor needs: a free
@@ -59,18 +60,18 @@ export default function HumanHelpPage() {
   const [country, setCountry] = useState("");
   const [goal, setGoal] = useState("");
   const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<any>(null);
   const [saving, setSaving] = useState(false);
 
   function chooseNeed(value: string) {
     setNeed(value);
-    setError("");
+    setError(null);
     setStep("details");
   }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setError("");
+    setError(null);
     setSaving(true);
     try {
       const response = await fetch("/api/human-help", {
@@ -80,16 +81,18 @@ export default function HumanHelpPage() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setError(
-          data.error ||
-            data.message ||
-            "The request could not be saved. Please try again."
-        );
+        setError({
+          message: data.error || data.message || "The request could not be saved.",
+          solution: data.solution || "Check your details and try again, or book a free consultation directly."
+        });
         return;
       }
       setStep("done");
     } catch {
-      setError("The request could not be saved. Please try again.");
+      setError({
+        message: "The request could not be saved.",
+        solution: "Check your connection and try again, or book a free consultation directly."
+      });
     } finally {
       setSaving(false);
     }
@@ -195,7 +198,11 @@ export default function HumanHelpPage() {
                 placeholder="One short line, for example: review my CV for German jobs"
               />
             </label>
-            {error ? <p className="notice text-ink">{error}</p> : null}
+            {error ? (
+              <div className="mt-3">
+                <ErrorNotice title="The request could not be saved." message={error.message} solution={error.solution} />
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center gap-4">
               <button className="btn-primary" type="submit" disabled={saving}>
                 {saving ? "Saving your request." : "Send my request"}
