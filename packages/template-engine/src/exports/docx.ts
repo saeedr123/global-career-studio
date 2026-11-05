@@ -148,7 +148,10 @@ export async function renderDocx(doc: RenderedDocument): Promise<Buffer> {
         alignment: nameAlign,
         children: [
           new TextRun({
-            text: `SAMPLE: ${doc.profile.email} | ${doc.profile.phone} | ${doc.profile.city}`,
+            text:
+              doc.profile.sampleMarker === "SAMPLE"
+                ? `SAMPLE: ${doc.profile.email} | ${doc.profile.phone} | ${doc.profile.city}`
+                : `${doc.profile.email} | ${doc.profile.phone} | ${doc.profile.city}`,
             size: 20
           })
         ]
@@ -156,7 +159,7 @@ export async function renderDocx(doc: RenderedDocument): Promise<Buffer> {
     );
   }
 
-  if (doc.photoIncluded) {
+  if (doc.photoIncluded && doc.profile.sampleMarker === "SAMPLE") {
     children.push(
       new Paragraph({
         children: [new TextRun({ text: "[SAMPLE photo placeholder]", size: 18 })]
