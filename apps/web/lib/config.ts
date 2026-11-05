@@ -76,7 +76,7 @@ export const editionConfig: EditionConfig = editionConfigs[edition];
 export const siteConfig = {
   name: editionConfig.brandName,
   tagline: editionConfig.tagline,
-  status: "Free beta, live on tools.nvconsult.eu. Server accounts and documents work. No payment and no connected AI generation yet.",
+  status: "Free beta, live on tools.nvconsult.eu. Accounts and documents work. No payment and no connected AI generation yet.",
   edition: editionConfig.edition,
   features: {
     accountsEnabled: true,
