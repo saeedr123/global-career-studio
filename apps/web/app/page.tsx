@@ -10,8 +10,11 @@ import { PLANS } from "../lib/billing-core.mjs";
 // systems, dossier rules 3, 4, 10, 13 and 14. Every number on this
 // page is counted from the code lists, never typed in by hand, and
 // no counter, percentage, success rate, testimonial, or slider
-// appears anywhere, dossier rules 2 and 18. The trust line is the
-// checkable operator line in the NVConsult edition only, rule 8.
+// appears anywhere, dossier rules 2 and 18. The hero trust line is
+// the checkable operator line in the NVConsult edition only, rule 8.
+// The footer no longer carries it, Increment 18. Entrance motion
+// is the shared reveal class from globals.css, transform and
+// opacity only, ending at full opacity.
 
 const FREE_PLAN = PLANS.find((plan: any) => plan.id === "free");
 if (!FREE_PLAN) {
@@ -36,7 +39,7 @@ export default function Home() {
   return (
     <main>
       <section className="hero">
-        <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
+        <div className="reveal mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-300">Free CV builder</p>
           <h1 className="hero-title mt-3">{heroHeadline}</h1>
           <div className="hero-rule mt-4" aria-hidden="true" />
@@ -57,7 +60,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="templates" className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+      <section id="templates" className="reveal reveal-delay-1 mx-auto max-w-5xl px-4 py-10 sm:px-6">
         <p className="eyebrow">What you get</p>
         <h2 className="section-title mt-2">Everything you need to apply, in one place</h2>
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -119,7 +122,7 @@ export default function Home() {
         </p>
       </section>
 
-      <section id="how-it-works" className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+      <section id="how-it-works" className="reveal reveal-delay-1 mx-auto max-w-5xl px-4 py-10 sm:px-6">
         <p className="eyebrow">How it works</p>
         <h2 className="section-title mt-2">Four steps, no retyping</h2>
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -156,7 +159,7 @@ export default function Home() {
         </p>
       </section>
 
-      <section id="free" className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+      <section id="free" className="reveal reveal-delay-2 mx-auto max-w-5xl px-4 py-10 sm:px-6">
         <p className="eyebrow">Free tier</p>
         <h2 className="section-title mt-2">Free means free, and the limits are stated</h2>
         <div className="card mt-6">
