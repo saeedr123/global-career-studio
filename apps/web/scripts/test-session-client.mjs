@@ -16,6 +16,7 @@ import {
   fetchServerDocuments,
   fetchServerProfile,
   readServerSession,
+  readSignedInSession,
   saveServerDocument,
   serverLogin,
   serverLogout,
@@ -231,6 +232,25 @@ await check("readServerSession ignores local sessions and expired server session
   assert.equal(readServerSession(storage), null);
   clearServerSession(storage);
   assert.equal(storage.store[SESSION_KEY], undefined);
+});
+
+await check("readSignedInSession accepts a server session and a local session", async () => {
+  const storage = createFakeStorage();
+  storage.setItem(SESSION_KEY, JSON.stringify({ token: SAMPLE_TOKEN, email: "sam.sample@example.test", expiresAt: SAMPLE_SESSION.expiresAt, mode: "server" }));
+  assert.equal(readSignedInSession(storage).email, "sam.sample@example.test");
+  storage.setItem(SESSION_KEY, JSON.stringify({ token: SAMPLE_TOKEN, email: "sam.sample@example.test", expiresAt: SAMPLE_SESSION.expiresAt, mode: "local" }));
+  assert.equal(readSignedInSession(storage).email, "sam.sample@example.test");
+});
+
+await check("readSignedInSession rejects expired, incomplete, and malformed sessions", async () => {
+  const storage = createFakeStorage();
+  storage.setItem(SESSION_KEY, JSON.stringify({ token: SAMPLE_TOKEN, email: "sam.sample@example.test", expiresAt: new Date(Date.now() - 1000).toISOString(), mode: "server" }));
+  assert.equal(readSignedInSession(storage), null);
+  storage.setItem(SESSION_KEY, JSON.stringify({ email: "sam.sample@example.test", expiresAt: SAMPLE_SESSION.expiresAt, mode: "local" }));
+  assert.equal(readSignedInSession(storage), null);
+  storage.setItem(SESSION_KEY, "{not json");
+  assert.equal(readSignedInSession(storage), null);
+  assert.equal(readSignedInSession(null), null);
 });
 
 await check("checkServerAvailable is true only when configured and the client is available", async () => {
