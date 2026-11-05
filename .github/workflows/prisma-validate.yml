@@ -1,0 +1,66 @@
+# Prisma validation, Phase 2 increment 12.
+# Runs on GitHub Actions only. This workspace cannot run GitHub
+# Actions and cannot check a run status, so a push of this file
+# does not claim a passed run. The first run result must be read
+# on GitHub before the schema is treated as validated.
+# There is no package.json at the repo root, so Prisma is installed
+# in a separate prisma-ci folder in the runner, not in the repo root
+# and not in apps/web. The schema stays PostgreSQL, checksums are
+# not ignored, no migration file is committed from CI, and no real
+# database is touched: db push runs only against the ephemeral
+# Postgres service container in this same workflow.
+name: Prisma validate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  prisma-validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: gcs_test
+          POSTGRES_PASSWORD: gcs_test_password
+          POSTGRES_DB: gcs_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install Prisma CLI in a separate folder
+        run: |
+          mkdir -p prisma-ci
+          cd prisma-ci
+          npm init -y
+          npm install prisma@6.14.0
+      - name: Validate schema
+        env:
+          DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma validate --schema prisma/schema.prisma
+      - name: Generate Prisma client with a dummy URL
+        env:
+          DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma generate --schema prisma/schema.prisma
+      - name: Apply schema to the ephemeral test database only
+        env:
+          DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma db push --schema prisma/schema.prisma --skip-generate
