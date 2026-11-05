@@ -106,6 +106,25 @@ export function readServerSession(storage) {
   return stored;
 }
 
+export function readSignedInSession(storage) {
+  if (!storage) {
+    return null;
+  }
+  let stored = null;
+  try {
+    stored = JSON.parse(storage.getItem(SESSION_KEY) || "null");
+  } catch {
+    return null;
+  }
+  if (!stored || !stored.token || !stored.email || !stored.expiresAt) {
+    return null;
+  }
+  if (new Date(stored.expiresAt).getTime() <= Date.now()) {
+    return null;
+  }
+  return stored;
+}
+
 export function clearServerSession(storage) {
   if (!storage) {
     return;
