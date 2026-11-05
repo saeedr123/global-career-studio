@@ -37,7 +37,7 @@ export interface EditionConfig {
 const editionConfigs: Record<Edition, EditionConfig> = {
   nvconsult: {
     edition: "nvconsult",
-    brandName: "NVConsult Career Tools",
+    brandName: "NVConsult CV Builder",
     shortName: "NVConsult",
     tagline: "Build a CV that fits your target country, with human help when you need it.",
     headerHelpLabel: "Get human help",
