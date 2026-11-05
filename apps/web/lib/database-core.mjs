@@ -494,6 +494,31 @@ export function localDraftToDocumentInput(draft, userId, edition) {
   };
 }
 
+// The builder sends template and country pack ids as slugs, for
+// example ats-minimal and us, because that is how they are known in
+// the code. Document.templateId and Document.countryPackId are
+// foreign keys to Template.id and CountryPack.id, so a slug only
+// works when a row with that id exists. Resolve the slug to the row
+// id here, and store null when no such row exists yet, instead of
+// failing the whole save with a foreign key error. Once the
+// reference rows are seeded, with the slug as the id, the lookup
+// finds them and the template and pack survive the round trip.
+async function resolveReferenceId(client, model, slug) {
+  if (!slug) {
+    return null;
+  }
+  try {
+    const table = client ? client[model] : null;
+    if (!table || typeof table.findUnique !== "function") {
+      return null;
+    }
+    const found = await table.findUnique({ where: { slug: String(slug) } });
+    return found ? found.id : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function createDocumentRecord(client, input) {
   requireClient(client);
   const data = input || {};
@@ -506,14 +531,16 @@ export async function createDocumentRecord(client, input) {
   if (data.paperSize && !PAPER_SIZES.includes(data.paperSize)) {
     throw new Error(`Unknown paper size: ${data.paperSize}.`);
   }
+  const templateId = await resolveReferenceId(client, "template", data.templateId);
+  const countryPackId = await resolveReferenceId(client, "countryPack", data.countryPackId);
   const created = await client.document.create({
     data: {
       userId: String(data.userId),
       profileId: data.profileId ? String(data.profileId) : null,
       title: data.title ? String(data.title) : null,
       documentType: data.documentType || "cv",
-      templateId: data.templateId ? String(data.templateId) : null,
-      countryPackId: data.countryPackId ? String(data.countryPackId) : null,
+      templateId,
+      countryPackId,
       language: data.language ? String(data.language) : "en",
       paperSize: data.paperSize || "A4",
       pageCountTarget: data.pageCountTarget || 1,
