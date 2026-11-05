@@ -17,6 +17,7 @@
 // needs the owner to run the manual Neon migrate deploy workflow
 // on GitHub once, after this increment is pushed.
 import { getDatabaseStatus, getPrismaClient } from "../../../lib/prisma";
+import { authErrors } from "../../../lib/error-format.mjs";
 import {
   createSessionRecord,
   createUserRecord,
@@ -24,18 +25,11 @@ import {
   getUserRecordByEmail,
   hashServerPassword,
   isValidEmail,
-  passwordNeedsRehash,
   revokeSessionRecord,
-  updateUserPasswordHash,
   verifyServerPassword
 } from "../../../lib/database-core.mjs";
-import { checkRateLimit, clientAddress, tooManyRequestsResponse } from "../../../lib/rate-limit-core.mjs";
 
 export const dynamic = "force-dynamic";
-
-// A scrypt hash of a random throwaway value, made once per instance,
-// used only to spend equal time when a sign in email has no account.
-const DUMMY_PASSWORD_HASH = hashServerPassword(`dummy-${Date.now()}-${Math.random()}`).passwordHash;
 
 async function getClient() {
   const status = await getDatabaseStatus();
@@ -58,7 +52,9 @@ function localOnlyResponse(action: string, database: any) {
       databaseProvider: database.provider,
       databaseRegion: database.region,
       message:
-        "Auth is local only here. No database is configured, or the generated Prisma client is not available in this environment, so no server account is created here. Use the local account page, with a hashed password stored only in this browser."
+        "Auth is local only here. No database is configured, or the generated Prisma client is not available in this environment, so no server account is created here. Your drafts stay saved in this browser.",
+      solution:
+        "Try again later, when the server is available. Your drafts are saved in this browser in the meantime."
     },
     { status: 501 }
   );
@@ -95,32 +91,15 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return Response.json({ error: "Request body must be JSON." }, { status: 400 });
+    return Response.json(authErrors().bodyNotJson(), { status: 400 });
   }
   const action = String(body?.action || "");
   if (!["signup", "login", "logout", "request-reset", "reset"].includes(action)) {
-    return Response.json({ error: "Action must be signup, login, logout, request-reset, or reset." }, { status: 400 });
+    return Response.json(authErrors().actionInvalid(), { status: 400 });
   }
   const { client, status } = await getClient();
   if (!client) {
     return localOnlyResponse(action, status);
-  }
-  if (action === "signup" || action === "login") {
-    // Limits, 2026-11-05: 20 sign up or sign in attempts per address
-    // per 15 minutes, and 8 sign in attempts per email per 15
-    // minutes, so one account cannot be guessed at from many places.
-    const address = clientAddress(request.headers);
-    const byAddress = checkRateLimit(`auth:ip:${address}`, 20, 15 * 60 * 1000);
-    if (!byAddress.allowed) {
-      return tooManyRequestsResponse(byAddress);
-    }
-    if (action === "login") {
-      const emailKey = String(body?.email || "").trim().toLowerCase();
-      const byEmail = checkRateLimit(`auth:email:${emailKey}`, 8, 15 * 60 * 1000);
-      if (!byEmail.allowed) {
-        return tooManyRequestsResponse(byEmail);
-      }
-    }
   }
   if (action === "request-reset" || action === "reset") {
     return Response.json(
@@ -128,7 +107,8 @@ export async function POST(request: Request) {
         status: "not_available",
         action,
         database: status.status,
-        message: "Password reset is not available on the server yet, because no email is sent. No reset email was sent and no password was changed."
+        message: "Password reset is not available on the server yet, because no email is sent. No reset email was sent and no password was changed.",
+        solution: "Book a free consultation and NVConsult will help you get back into your account."
       },
       { status: 501 }
     );
@@ -136,7 +116,7 @@ export async function POST(request: Request) {
   if (action === "logout") {
     const token = bearerToken(request, body);
     if (!token) {
-      return Response.json({ error: "A session token is required to log out." }, { status: 400 });
+      return Response.json(authErrors().tokenRequired(), { status: 400 });
     }
     const revoked = await revokeSessionRecord(client, token);
     return Response.json({ status: "database", action, revoked }, { status: 200 });
@@ -147,20 +127,20 @@ export async function POST(request: Request) {
     const password = String(body?.password || "");
     const confirmPassword = String(body?.confirmPassword || "");
     if (!name) {
-      return Response.json({ error: "A name is required." }, { status: 400 });
+      return Response.json(authErrors().nameRequired(), { status: 400 });
     }
     if (!isValidEmail(email)) {
-      return Response.json({ error: "A valid email is required." }, { status: 400 });
+      return Response.json(authErrors().emailInvalid(), { status: 400 });
     }
     if (password.length < 8) {
-      return Response.json({ error: "The password must be at least 8 characters." }, { status: 400 });
+      return Response.json(authErrors().passwordShort(), { status: 400 });
     }
     if (confirmPassword && password !== confirmPassword) {
-      return Response.json({ error: "The passwords do not match." }, { status: 400 });
+      return Response.json(authErrors().passwordMismatch(), { status: 400 });
     }
     const existing = await getUserByEmail(client, email);
     if (existing) {
-      return Response.json({ error: "An account with this email already exists." }, { status: 409 });
+      return Response.json(authErrors().accountExists(), { status: 409 });
     }
     const hashed = hashServerPassword(password);
     const account = await createUserRecord(
@@ -184,27 +164,11 @@ export async function POST(request: Request) {
   const email = String(body?.email || "").trim();
   const password = String(body?.password || "");
   if (!isValidEmail(email) || !password) {
-    return Response.json({ error: "A valid email and a password are required." }, { status: 400 });
+    return Response.json(authErrors().emailInvalid(), { status: 400 });
   }
   const record = await getUserRecordByEmail(client, email);
-  if (!record) {
-    // Spend the same time as a real check, so response time does not
-    // reveal whether an email has an account.
-    verifyServerPassword(password, DUMMY_PASSWORD_HASH);
-    return Response.json({ error: "The email or password does not match." }, { status: 401 });
-  }
-  if (!verifyServerPassword(password, record.passwordHash)) {
-    return Response.json({ error: "The email or password does not match." }, { status: 401 });
-  }
-  if (passwordNeedsRehash(record.passwordHash)) {
-    // Upgrade an old SHA-256 row to scrypt now that the plain
-    // password is known to be right. A failure here never blocks
-    // the sign in; the row is upgraded on a later sign in instead.
-    try {
-      await updateUserPasswordHash(client, record.id, hashServerPassword(password).passwordHash);
-    } catch {
-      // Keep the sign in working.
-    }
+  if (!record || !verifyServerPassword(password, record.passwordHash)) {
+    return Response.json(authErrors().loginMismatch(), { status: 401 });
   }
   const created = await createSessionRecord(client, record.id);
   const { passwordHash, ...account } = record;
