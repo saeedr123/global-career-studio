@@ -143,8 +143,10 @@ export default function BuilderPage() {
         const document = JSON.parse(opened);
         if (document && document.serverDocument) {
           const nextSettings = createDefaultSettings();
+          let templateApplied = false;
           if (document.templateId && templateById(document.templateId)) {
             nextSettings.templateId = document.templateId;
+            templateApplied = true;
           }
           if (document.paperSize === "US_LETTER" || document.paperSize === "A4") {
             nextSettings.paperSize = document.paperSize;
@@ -157,7 +159,11 @@ export default function BuilderPage() {
           setExistingDocument(true);
           setServerDocumentTitle(document.title || document.label || "Untitled document");
           setSavedState(`Opened server document: ${document.title || document.label || "document"}.`);
-          setMessage("Server document opened. Its template, paper size, and section order were applied. The profile fields below stay local, because a server document stores settings only, not the full profile. Load the server profile from the profile page to fill them in.");
+          setMessage(
+            templateApplied
+              ? "Server document opened. Its template, paper size, and section order were applied. The profile fields below stay local, because a server document stores settings only, not the full profile. Load the server profile from the profile page to fill them in."
+              : "Server document opened. Its paper size and section order were applied, but no template was stored on the server for it, so the default template is shown. Pick the template you want below. The profile fields stay local, because a server document stores settings only, not the full profile. Load the server profile from the profile page to fill them in."
+          );
           setActiveJobVersionId("");
         } else if (document && document.profile) {
           setProfile(document.profile);
