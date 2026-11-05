@@ -20,12 +20,14 @@ import {
   createDocumentRecord,
   createSessionRecord,
   createUserRecord,
+  deleteDocumentRecord,
   getDocumentForUser,
   getSessionByToken,
   getSessionUser,
   getUserByEmail,
   hashServerPassword,
   hashSessionToken,
+  localDraftToDocumentInput,
   logAdminAction,
   publicSession,
   requireClient,
@@ -101,7 +103,15 @@ function createMockClient() {
         store.documents.push(row);
         return row;
       },
-      findUnique: async ({ where }) => store.documents.find((item) => item.id === where.id) || null
+      findUnique: async ({ where }) => store.documents.find((item) => item.id === where.id) || null,
+      update: async ({ where, data }) => {
+        const found = store.documents.find((item) => item.id === where.id);
+        if (!found) {
+          throw new Error("That document was not found.");
+        }
+        Object.assign(found, data);
+        return found;
+      }
     },
     adminAuditLog: {
       create: async ({ data }) => {
@@ -263,6 +273,19 @@ await check("logAdminAction through the database needs admin and reason and sani
   assert.equal(client.store.audit.length, 1);
 });
 
+await check("deleteDocumentRecord soft deletes only a document owned by the caller", async () => {
+  const client = createMockClient();
+  const owner = await createSampleUser(client);
+  const other = await createUserRecord(client, { name: "Ollie Other", email: "ollie.other@example.test" }, hashServerPassword("SAMPLE-password-6").passwordHash);
+  const created = await createDocumentRecord(client, localDraftToDocumentInput({ label: "SAMPLE document", profile: {}, settings: { templateId: "ats-minimal" } }, owner.id, "commercial"));
+  const missing = await deleteDocumentRecord(client, owner.id, "doc-does-not-exist");
+  assert.equal(missing.deleted, false);
+  await assert.rejects(deleteDocumentRecord(client, other.id, created.id), /different user/);
+  const deleted = await deleteDocumentRecord(client, owner.id, created.id);
+  assert.equal(deleted.deleted, true);
+  assert.notEqual(client.store.documents[0].deletedAt, null);
+});
+
 await check("local fallback: session and document functions throw plainly with no client", async () => {
   await assert.rejects(createSessionRecord(null, "user-1"), /Database is not configured/);
   await assert.rejects(getSessionByToken(null, "SAMPLE-token"), /Database is not configured/);
@@ -279,6 +302,10 @@ await check("auth, profile, and documents routes keep a local only 501 fallback 
   }
   const core = readFileSync(path.resolve(here, "..", "lib", "database-core.mjs"), "utf8");
   assert.equal(core.includes("postgresql://"), false);
+  const documentsRoute = readFileSync(path.resolve(here, "..", "app", "api", "documents", "route.ts"), "utf8");
+  assert.equal(documentsRoute.includes("export async function DELETE"), true, "documents route must offer DELETE for a server document");
+  assert.equal(documentsRoute.includes("deleteDocumentRecord"), true, "documents DELETE must use the data layer delete");
+  assert.equal(core.includes("export async function deleteDocumentRecord"), true, "data layer must offer a document delete");
 });
 
 console.log(`Total: ${passed} passed, 0 failed.`);
