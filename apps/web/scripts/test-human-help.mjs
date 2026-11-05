@@ -210,7 +210,8 @@ await check("human help API route has a plain 501 local only fallback and a plai
   const route = read("app/api/human-help/route.ts");
   assert.ok(route.includes("local_only"), "route has no local only status");
   assert.ok(route.includes("501"), "route has no 501 local only answer");
-  assert.ok(route.includes("The request could not be saved"), "route has no plain save error");
+  assert.ok(route.includes("humanHelpErrors"), "route does not use the shared error catalog");
+  assert.ok(route.includes("saveFailed"), "route has no plain save error");
   assert.ok(route.includes("validateHumanHelpRequest"), "route does not validate the input");
   assert.ok(route.includes("export async function POST"), "route has no POST handler");
   assert.ok(route.includes("export async function GET"), "route has no GET handler for the admin list");
