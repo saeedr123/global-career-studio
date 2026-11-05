@@ -11,6 +11,7 @@ import {
 import { fetchServerProfile, readServerSession, saveServerProfile } from "../../lib/session-client.mjs";
 import { createDefaultSettings, parseDraft, validateProfile } from "../../lib/builder-core.mjs";
 import RequireAuth from "../components/RequireAuth";
+import ErrorNotice from "../components/ErrorNotice";
 
 // Master profile editor, Phase 2 increment 17.
 // One profile per account, reused across documents. When signed in,
@@ -32,6 +33,7 @@ const OPEN_KEY = "gcs-open-document";
 export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(() => createEmptyProfile());
   const [message, setMessage] = useState("");
+  const [notice, setNotice] = useState<any>(null);
   const [missing, setMissing] = useState<string[]>([]);
   const [serverSession, setServerSession] = useState<any>(null);
 
@@ -87,11 +89,14 @@ export default function ProfilePage() {
       }
     } catch (error: any) {
       if (!quiet) {
-        setMessage(
-          error?.code === "local_only" || error?.code === "unreachable"
-            ? "Your profile could not be saved with your account right now, so it was saved in this browser."
-            : error?.message || "Save failed. The master profile was saved in this browser."
-        );
+        setNotice({
+          title: "Save failed.",
+          message:
+            error?.code === "local_only" || error?.code === "unreachable"
+              ? "Your profile could not be saved with your account right now, so it was saved in this browser."
+              : error?.message || "The master profile was saved in this browser.",
+          solution: error?.solution || "Check your connection and try again. Your profile stays saved in this browser."
+        });
       }
     }
   }
@@ -182,6 +187,11 @@ export default function ProfilePage() {
         <button type="button" className="btn-secondary" onClick={useProfileInBuilder}>Use this profile in the builder</button>
       </div>
       <p className="mt-4 text-sm text-muted">Experience, education, and custom sections are edited in the builder for now. The profile fields above are the reusable core, and the full profile copy is preserved when a draft is loaded.</p>
+      {notice && (
+        <div className="mt-4">
+          <ErrorNotice title={notice.title} message={notice.message} solution={notice.solution} />
+        </div>
+      )}
       {message && <p className="mt-4 text-ink">{message}</p>}
       <p className="mt-4"><a className="brand-link" href="/dashboard">Back to the dashboard</a></p>
       </RequireAuth>
