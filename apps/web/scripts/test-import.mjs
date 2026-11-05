@@ -10,8 +10,8 @@ import assert from "node:assert";
 import { parseFileImport } from "../lib/builder-core.mjs";
 
 const engine = await import("../../../packages/template-engine/dist/index.js");
-const PDFDocument = (await import("../../../packages/template-engine/node_modules/pdfkit/js/pdfkit.js")).default;
-const docxLib = await import("../../../packages/template-engine/node_modules/docx/dist/index.mjs");
+const PDFDocument = (await import("pdfkit")).default;
+const docxLib = await import("docx");
 
 function pdfBuffer(lines) {
   return new Promise((resolve, reject) => {
