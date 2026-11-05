@@ -1,7 +1,7 @@
 # Architecture - Phase 1, updated Phase 2 increment 2
 Date: 4 November 2026, updated 4 November 2026 for split ready design
 Status: Design only, except for the schema, scaffold, template engine, and dashboard shell already built in Phase 2 increments 1 and 2. No feature beyond those increments is claimed as built from this document.
-Environment checked 4 November 2026: Node 24.22.1, npm 10.9.4, Python 3.12.3, no local Postgres. Use hosted Postgres, not a local Postgres assumption.
+Environment checked 4 November 2026: Node 24.22.1, npm 10.9.4, Python 3.12.3, no local Postgres. Use hosted Postgres, not a local Postgres assumption. Hosted Postgres chosen in Phase 2 increment 13: Neon, free plan, region AWS EU Central Frankfurt (eu-central-1), see docs/database-design.md for the decision, the limits, and the runner up. No live Neon database is connected in increment 13, because no DATABASE_URL has been shared and no repo secret has been added yet.
 
 ## Product and deployment shape
 
@@ -99,7 +99,7 @@ Rules:
 
 Options to evaluate in Phase 2, not decided in Phase 1:
 - Next.js hosting: Vercel, or a VPS with Node, with a clear backup and rollback plan.
-- Postgres: Hosted Postgres service, with daily backups and point in time recovery if available.
+- Postgres: Hosted Postgres service, with daily backups and point in time recovery if available. Chosen in Phase 2 increment 13: Neon, free plan, region AWS EU Central Frankfurt (eu-central-1). Limits to recheck on Neon's own pricing page before creating: free storage reported as 0.5 GB in some sources and 1 GB in others, about 100 CU-hours per project per month, scale to zero after 5 minutes idle with a short cold start on the first query, and free projects inactive 90 days or more subject to deletion per one source. Supabase is the runner up, not chosen, because the Studio does not need its bundled Auth, storage, or realtime, and its 7 day pause is the worse failure mode for a quiet beta. No live Neon database is connected in increment 13.
 - Object storage: For photos and exports, with signed access, not public by default.
 - Monitoring: Uptime, export success rate, AI error rate, and payment webhook failures, with alerts, without logging CV content.
 - Do not choose a host in Phase 1 on price alone. Choose on backup, rollback, GDPR data location, and support for the Studio launch market.
