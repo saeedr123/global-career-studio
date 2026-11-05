@@ -53,6 +53,7 @@ if (existsSync(distIndex) && existsSync(distTypes)) {
 }
 
 const tscCandidates = [
+  path.join(repoRoot, "node_modules", "typescript", "bin", "tsc"),
   path.join(webDir, "node_modules", "typescript", "bin", "tsc"),
   path.join(engineDir, "node_modules", "typescript", "bin", "tsc")
 ];
@@ -69,10 +70,14 @@ if (!tsc) {
 }
 
 // The engine source imports fs, path, adm-zip and pdfkit, so it needs
-// @types/node, @types/adm-zip and @types/pdfkit. Those live in the web
-// app node_modules/@types, which tsc does not find on its own because
-// it is not an ancestor of the engine directory, so point it there.
-const typeRoots = path.join(webDir, "node_modules", "@types");
+// @types/node, @types/adm-zip and @types/pdfkit. With npm workspaces
+// those are hoisted to the repo root node_modules/@types, which is an
+// ancestor of the engine directory, so tsc finds them on its own. Point
+// at the root first, and fall back to the web app node_modules/@types
+// for a non-workspace install.
+const typeRoots = existsSync(path.join(repoRoot, "node_modules", "@types"))
+  ? path.join(repoRoot, "node_modules", "@types")
+  : path.join(webDir, "node_modules", "@types");
 const args = [tsc, "-p", tsconfig];
 if (existsSync(typeRoots)) {
   args.push("--typeRoots", typeRoots);
