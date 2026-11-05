@@ -160,13 +160,13 @@ export default function AdminPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      <h1 className="text-3xl font-bold text-navy">Admin, local only</h1>
-      <p className="mt-4 rounded border border-amber-300 bg-amber-50 p-4 text-slate-800">
+      <h1 className="page-title">Admin</h1>
+      <p className="mt-4 notice text-ink">
         Local only admin, not a secured production admin. No real database
         and no real admin auth are connected. Everything on this page
         lives in this browser only, and nothing here changes a live site.
       </p>
-      <p className="mt-4 text-slate-700">
+      <p className="mt-4 text-ink">
         Database: {databaseStatus ? databaseStatus.message : "Checking database status."} Server admin groundwork is in
         place in the data layer, with an admin role check, a required
         reason, and an audit row for every server admin action, and in
@@ -175,18 +175,18 @@ export default function AdminPage() {
         It stays inactive until a database is connected and the caller
         is a real admin user, and until then this page stays local only.
       </p>
-      <p className="mt-4 text-slate-700">
+      <p className="mt-4 text-ink">
         Counts below are aggregated only. No CV text, no user names, no
         emails, and no document content are shown, and none are written
         to the audit log. Every admin action needs a reason, and every
         action is written to the local audit log with its action, time,
         and reason.
       </p>
-      {message ? <p className="mt-4 rounded border border-slate-200 bg-white p-4 text-slate-800">{message}</p> : null}
+      {message ? <p className="mt-4 card text-ink">{message}</p> : null}
 
-      <h2 className="mt-10 text-2xl font-semibold">Aggregated document counts</h2>
+      <h2 className="mt-10 section-title">Aggregated document counts</h2>
       {counts ? (
-        <div className="mt-4 space-y-4 text-slate-700">
+        <div className="mt-4 space-y-4 text-ink">
           <p>Total local documents counted: {counts.total}</p>
           <div>
             <h3 className="font-semibold">By template</h3>
@@ -220,83 +220,83 @@ export default function AdminPage() {
           </div>
         </div>
       ) : (
-        <p className="mt-4 text-slate-700">Loading local counts.</p>
+        <p className="mt-4 text-ink">Loading local counts.</p>
       )}
 
-      <h2 className="mt-10 text-2xl font-semibold">Versioning, local config only</h2>
-      <p className="mt-2 text-slate-700">
+      <h2 className="mt-10 section-title">Versioning, local config only</h2>
+      <p className="mt-2 text-ink">
         Preview sets a draft version without changing the published version.
         Publish makes a version the published local version. Rollback
         restores the earlier published version. A reason is required for
         every action.
       </p>
-      <label className="mt-4 block text-sm font-semibold text-slate-700">
+      <label className="mt-4 block text-sm font-semibold text-ink">
         Reason for the next admin action
         <input
-          className="mt-1 block w-full rounded border border-slate-300 p-2 font-normal"
+          className="mt-1 input-field"
           value={reason}
           onChange={(event) => setReason(event.target.value)}
           placeholder="For example: weekly config review"
         />
       </label>
       {CONFIG_KINDS.map((kind: string) => (
-        <section key={kind} className="mt-6 rounded border border-slate-200 bg-white p-4">
+        <section key={kind} className="mt-6 card">
           <h3 className="font-semibold">{KIND_LABELS[kind]}</h3>
-          <p className="mt-2 text-sm text-slate-700">
+          <p className="mt-2 text-sm text-ink">
             Published: {config[kind]?.published ? config[kind].published.version : "none"}
             {config[kind]?.published?.summary ? ` (${config[kind].published.summary})` : ""}
           </p>
-          <p className="mt-1 text-sm text-slate-700">
+          <p className="mt-1 text-sm text-ink">
             Preview: {config[kind]?.preview ? config[kind].preview.version : "none"}
           </p>
-          <p className="mt-1 text-sm text-slate-700">Earlier published versions kept: {config[kind]?.history?.length || 0}</p>
-          <label className="mt-3 block text-sm font-semibold text-slate-700">
+          <p className="mt-1 text-sm text-ink">Earlier published versions kept: {config[kind]?.history?.length || 0}</p>
+          <label className="mt-3 block text-sm font-semibold text-ink">
             Version label
             <input
-              className="mt-1 block w-full rounded border border-slate-300 p-2 font-normal"
+              className="mt-1 input-field"
               value={versions[kind]}
               onChange={(event) => setVersions({ ...versions, [kind]: event.target.value })}
               placeholder="For example: 1.1"
             />
           </label>
-          <label className="mt-3 block text-sm font-semibold text-slate-700">
+          <label className="mt-3 block text-sm font-semibold text-ink">
             Short summary, no document content
             <input
-              className="mt-1 block w-full rounded border border-slate-300 p-2 font-normal"
+              className="mt-1 input-field"
               value={summaries[kind]}
               onChange={(event) => setSummaries({ ...summaries, [kind]: event.target.value })}
               placeholder="For example: wording update only"
             />
           </label>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button className="rounded bg-slate-800 px-4 py-2 text-white" onClick={() => handlePreview(kind)}>
+            <button className="btn-primary" onClick={() => handlePreview(kind)}>
               Preview
             </button>
-            <button className="rounded bg-slate-800 px-4 py-2 text-white" onClick={() => handlePublish(kind)}>
+            <button className="btn-primary" onClick={() => handlePublish(kind)}>
               Publish
             </button>
-            <button className="rounded bg-slate-800 px-4 py-2 text-white" onClick={() => handleRollback(kind)}>
+            <button className="btn-primary" onClick={() => handleRollback(kind)}>
               Rollback
             </button>
           </div>
         </section>
       ))}
 
-      <h2 className="mt-10 text-2xl font-semibold">Feature flags, local only</h2>
-      <p className="mt-2 text-slate-700">
+      <h2 className="mt-10 section-title">Feature flags, local only</h2>
+      <p className="mt-2 text-ink">
         Turning a feature off hides it in this local app only. It does
         not change any live site, because no live site is connected.
         A reason is required, and the change is logged below.
       </p>
       <ul className="mt-4 space-y-3">
         {FEATURE_FLAG_KEYS.map((key: string) => (
-          <li key={key} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-white p-4">
+          <li key={key} className="flex flex-wrap items-center justify-between gap-2 card">
             <span className="font-semibold capitalize">{key}: {flags[key] ? "on" : "off"}</span>
             <span className="flex gap-2">
-              <button className="rounded bg-slate-800 px-3 py-1 text-white" onClick={() => handleFlag(key, true)}>
+              <button className="btn-secondary" onClick={() => handleFlag(key, true)}>
                 Turn on
               </button>
-              <button className="rounded bg-slate-800 px-3 py-1 text-white" onClick={() => handleFlag(key, false)}>
+              <button className="btn-secondary" onClick={() => handleFlag(key, false)}>
                 Turn off
               </button>
             </span>
@@ -304,17 +304,17 @@ export default function AdminPage() {
         ))}
       </ul>
 
-      <h2 className="mt-10 text-2xl font-semibold">Local audit log</h2>
-      <p className="mt-2 text-slate-700">
+      <h2 className="mt-10 section-title">Local audit log</h2>
+      <p className="mt-2 text-ink">
         Each entry shows action, time, and reason only. No CV content
         and no secret is stored here.
       </p>
       {audit.length === 0 ? (
-        <p className="mt-4 text-slate-700">No local admin actions recorded yet.</p>
+        <p className="mt-4 text-ink">No local admin actions recorded yet.</p>
       ) : (
         <ul className="mt-4 space-y-2">
           {audit.map((entry: any, index: number) => (
-            <li key={index} className="rounded border border-slate-200 bg-white p-4 text-sm text-slate-700">
+            <li key={index} className="card text-sm text-ink">
               <span className="font-semibold">{entry.action}</span> at {entry.time} for reason: {entry.reason}
               {entry.summary ? <span> ({entry.summary})</span> : null}
             </li>
