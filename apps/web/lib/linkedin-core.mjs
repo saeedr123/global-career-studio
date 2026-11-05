@@ -148,7 +148,6 @@ export function parseCsvWithHeaders(text) {
 
 function emptyProfile() {
   return {
-    sampleMarker: "SAMPLE",
     fullName: "",
     headline: "",
     email: "",
