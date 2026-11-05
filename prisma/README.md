@@ -4,12 +4,16 @@ This folder holds the Prisma schema only. No migration has been run yet,
 and no database is connected. In increment 12, a GitHub Actions
 workflow was added at .github/workflows/prisma-validate.yml to run
 prisma validate, prisma generate, and prisma db push against an
-ephemeral Postgres service container on GitHub. BLOCKED UPLOAD IN
-THIS INCREMENT: that workflow file was NOT pushed to GitHub,
-because the helper returned status 403, Resource not accessible
-by personal access token. No CI run is pending, and no CI run is
-claimed as passed, because this environment cannot run GitHub
-Actions or check a run status, and the file is not on GitHub yet.
+ephemeral Postgres service container on GitHub. WORKFLOW PUSHED
+AFTER TOKEN UPDATE: the first upload in increment 12 was blocked
+with status 403, Resource not accessible by personal access token,
+because the token did not yet have Workflows access. Ali updated
+the token to include Workflows Read and write on 2026-11-05, and
+the retry returned status 201, sha
+8959c8154e9fa18aa482f3742ee8eba48d64aad7. A CI run should have
+started on GitHub on that push. No CI run is claimed as passed,
+because no run result has been read, and this environment cannot
+run GitHub Actions or check a run status.
 The provider was NOT changed to SQLite, checksums were
 NOT ignored, and no migration was run against any real database.
 Do NOT treat the schema as officially validated until a CI run
