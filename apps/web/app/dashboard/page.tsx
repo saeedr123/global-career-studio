@@ -18,6 +18,7 @@ import {
 } from "../../lib/session-client.mjs";
 import { edition } from "../../lib/config";
 import RequireAuth from "../components/RequireAuth";
+import ErrorNotice from "../components/ErrorNotice";
 
 // Working dashboard, Phase 2 increment 17, saved and browser documents.
 // When signed in, it lists that user's saved documents from
@@ -44,6 +45,7 @@ export default function Dashboard() {
   const [renameId, setRenameId] = useState("");
   const [renameValue, setRenameValue] = useState("");
   const [message, setMessage] = useState("");
+  const [notice, setNotice] = useState<any>(null);
 
   function loadDocuments() {
     try {
@@ -136,7 +138,11 @@ export default function Dashboard() {
       setServerDocuments((current: any[]) => current.filter((item: any) => item.id !== id));
       setMessage(`Saved document deleted: ${label}.`);
     } catch (error: any) {
-      setMessage(error?.message || "Delete failed. The document was not removed.");
+      setNotice({
+        title: "Delete failed.",
+        message: error?.message || "The document was not removed.",
+        solution: error?.solution || "Check your connection and try again. Your drafts in this browser are unchanged."
+      });
     }
   }
 
@@ -243,6 +249,11 @@ export default function Dashboard() {
             </li>
           ))}
         </ul>
+      )}
+      {notice && (
+        <div className="mt-4">
+          <ErrorNotice title={notice.title} message={notice.message} solution={notice.solution} />
+        </div>
       )}
       {message && <p className="mt-4 text-ink">{message}</p>}
 
