@@ -15,6 +15,11 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Neon wiring, 2026-11-05: DATABASE_URL is the pooled connection,
+  // for the running app. DIRECT_URL is the direct connection, for
+  // Prisma migrations only, which must not run through the pooler.
+  // Both are names only here, never values. See .env.example.
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
