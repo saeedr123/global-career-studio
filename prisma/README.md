@@ -10,10 +10,17 @@ with status 403, Resource not accessible by personal access token,
 because the token did not yet have Workflows access. Ali updated
 the token to include Workflows Read and write on 2026-11-05, and
 the retry returned status 201, sha
-8959c8154e9fa18aa482f3742ee8eba48d64aad7. A CI run should have
-started on GitHub on that push. No CI run is claimed as passed,
-because no run result has been read, and this environment cannot
-run GitHub Actions or check a run status.
+8959c8154e9fa18aa482f3742ee8eba48d64aad7. CI RUN PASSED ON
+2026-11-05: Ali checked the GitHub Actions page and reported all
+green, 4 green runs on main, Prisma validate #1 commit bc6b40a
+59s, #2 commit b232d1a 58s, #3 commit 44e75c2 50s, #4 commit
+25d9358 1m 2s, all pushed by saeedr123. A green run means every
+workflow step passed, validate, generate, and db push against
+the ephemeral Postgres 15 service container, so the schema is
+now officially validated and the db push test passed. Local
+validation in this environment still has NOT passed, for the same
+ECONNRESET reason, but the GitHub Actions run is the official
+proof. No migration has been run against any real database yet.
 The provider was NOT changed to SQLite, checksums were
 NOT ignored, and no migration was run against any real database.
 Do NOT treat the schema as officially validated until a CI run
