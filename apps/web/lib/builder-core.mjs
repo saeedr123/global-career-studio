@@ -1,9 +1,13 @@
 // Builder core, Phase 2 increment 3.
 // Pure JavaScript, no browser or database dependency, so the same logic
 // can be tested with plain Node and used by the React builder page.
-// Sample data only. The starting profile is fictional and marked SAMPLE.
-// User edits in the builder are local draft edits, not real history, and
-// drafts autosave in the browser. The builder page can also save a copy
+// Starting data is EMPTY, Phase 2 increment 21. The fictional sample
+// profile below is only the source of placeholder hint text, never a
+// field value. Hints show in empty fields, disappear when the user
+// starts typing, and are never saved, stored, or exported. An
+// untouched draft exports with no sample text at all. User edits in
+// the builder are local draft edits, not real history, and drafts
+// autosave in the browser. The builder page can also save a copy
 // to the server through the documents API when the user presses it.
 
 export const DEFAULT_SECTION_ORDER = [
@@ -41,6 +45,49 @@ export function templateById(id) {
 
 export function photoIncluded(templateId, flag) {
   return Boolean(flag) && templateById(templateId).photoAllowed;
+}
+
+export function createEmptyProfile() {
+  return {
+    fullName: "",
+    headline: "",
+    email: "",
+    phone: "",
+    city: "",
+    summary: "",
+    experience: [],
+    education: [],
+    skills: [],
+    languages: [],
+    customSections: []
+  };
+}
+
+// Placeholder hint text, derived from the fictional sample profile.
+// Hints are shown in empty fields only. They are never field values,
+// never saved, never stored, and never exported. The sample person
+// stays fictional and is never presented as the user's own history.
+export function samplePlaceholders() {
+  const sample = createSampleProfile();
+  const firstJob = (sample.experience || [])[0] || {};
+  const firstEducation = (sample.education || [])[0] || {};
+  return {
+    fullName: sample.fullName,
+    headline: sample.headline,
+    email: sample.email,
+    phone: sample.phone,
+    city: sample.city,
+    summary: sample.summary.replace(/^SAMPLE:\s*/, ""),
+    skills: (sample.skills || []).join(", "),
+    languages: (sample.languages || []).join(", "),
+    employer: firstJob.employer || "",
+    jobTitle: firstJob.jobTitle || "",
+    location: firstJob.location || "",
+    period: firstJob.period || "",
+    qualification: firstEducation.qualification || "",
+    institution: firstEducation.institution || "",
+    bullet: ((firstJob.bullets || [])[0] || "")
+  };
 }
 
 export function createSampleProfile() {
@@ -156,47 +203,66 @@ export function sectionTitle(profile, key) {
 
 // Preview sections, mirroring the template engine section builder, so
 // the live preview shows the same order and content as the export.
+// Empty sections show their heading and a short "Add your ..." hint,
+// never sample jobs, names, or summaries presented as the user's.
+// The SAMPLE label appears only when the profile itself carries the
+// sample marker, which happens only for a genuinely sample document.
 export function buildPreviewSections(profile, sectionOrder) {
   const order = sectionOrderFor(profile, sectionOrder);
+  const isSample = profile.sampleMarker === "SAMPLE";
+  const summaryText = (profile.summary || "").trim();
   const all = {
     summary: {
       key: "summary",
       title: "Summary",
-      lines: [`SAMPLE: ${profile.summary || ""}`],
-      bullets: []
+      lines: summaryText
+        ? [isSample ? `SAMPLE: ${profile.summary}` : profile.summary]
+        : ["Add your summary here."],
+      bullets: [],
+      hint: !summaryText
     },
     experience: {
       key: "experience",
       title: "Experience",
-      lines: [],
+      lines: (profile.experience || []).length === 0 ? ["Add a job to see it here."] : [],
       bullets: (profile.experience || []).map((entry) => [
         `${entry.jobTitle}, ${entry.employer}, ${entry.location}, ${entry.period}`,
         ...(entry.bullets || [])
-      ])
+      ]),
+      hint: (profile.experience || []).length === 0
     },
     education: {
       key: "education",
       title: "Education",
-      lines: (profile.education || []).map(
-        (entry) => `${entry.qualification}, ${entry.institution}, ${entry.period}`
-      ),
-      bullets: []
+      lines: (profile.education || []).length === 0
+        ? ["Add your education here."]
+        : (profile.education || []).map(
+          (entry) => `${entry.qualification}, ${entry.institution}, ${entry.period}`
+        ),
+      bullets: [],
+      hint: (profile.education || []).length === 0
     },
     skills: {
       key: "skills",
       title: "Skills",
-      lines: [(profile.skills || []).join(", ")],
-      bullets: []
+      lines: (profile.skills || []).length === 0
+        ? ["Add your skills here."]
+        : [(profile.skills || []).join(", ")],
+      bullets: [],
+      hint: (profile.skills || []).length === 0
     },
     languages: {
       key: "languages",
       title: "Languages",
-      lines: [(profile.languages || []).join(", ")],
-      bullets: []
+      lines: (profile.languages || []).length === 0
+        ? ["Add your languages here."]
+        : [(profile.languages || []).join(", ")],
+      bullets: [],
+      hint: (profile.languages || []).length === 0
     }
   };
   for (const custom of profile.customSections || []) {
-    all[custom.key] = { key: custom.key, title: custom.title, lines: custom.lines, bullets: [] };
+    all[custom.key] = { key: custom.key, title: custom.title, lines: custom.lines, bullets: [], hint: false };
   }
   return order.map((key) => all[key]).filter(Boolean);
 }
@@ -269,8 +335,9 @@ export function restoreVersion(history, index) {
 // dropped into a profile field. The caller must show the parsed profile
 // for correction before it becomes a document.
 export function parseImport(text) {
+  // Imported text is the user's own CV, never sample data, so no
+  // sample marker is set here.
   const profile = {
-    sampleMarker: "SAMPLE",
     fullName: "",
     headline: "",
     email: "",
@@ -521,7 +588,6 @@ function splitList(line) {
 
 export function parseCvText(text) {
   const profile = {
-    sampleMarker: "SAMPLE",
     fullName: "",
     headline: "",
     email: "",
@@ -708,7 +774,6 @@ export function parseFileImport(text) {
   if (!clean) {
     return {
       profile: {
-        sampleMarker: "SAMPLE",
         fullName: "",
         headline: "",
         email: "",
