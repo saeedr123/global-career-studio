@@ -36,6 +36,8 @@ import {
 // the master profile.
 
 import { createEmptyProfile, saveDraftToProfile } from "../../lib/auth-core.mjs";
+import { readServerSession, saveServerDocument } from "../../lib/session-client.mjs";
+import { edition } from "../../lib/config";
 import {
   COUNTRY_PACKS,
   LANGUAGE_PACKS,
@@ -97,6 +99,8 @@ export default function BuilderPage() {
   const [subscriptionPlan, setSubscriptionPlan] = useState("free");
   const [subscriptionTrialEnd, setSubscriptionTrialEnd] = useState("");
   const [existingDocument, setExistingDocument] = useState(false);
+  const [serverSession, setServerSession] = useState<any>(null);
+  const [serverDocumentTitle, setServerDocumentTitle] = useState("");
   const timer = useRef<any>(null);
 
   useEffect(() => {
@@ -125,11 +129,37 @@ export default function BuilderPage() {
       // An unreadable onboarding choice is ignored, the draft is unchanged.
     }
     try {
+      const session = readServerSession(window.localStorage);
+      if (session) {
+        setServerSession(session);
+      }
+    } catch {
+      setServerSession(null);
+    }
+    try {
       const opened = window.localStorage.getItem(OPEN_KEY);
       if (opened) {
         window.localStorage.removeItem(OPEN_KEY);
         const document = JSON.parse(opened);
-        if (document && document.profile) {
+        if (document && document.serverDocument) {
+          const nextSettings = createDefaultSettings();
+          if (document.templateId && templateById(document.templateId)) {
+            nextSettings.templateId = document.templateId;
+          }
+          if (document.paperSize === "US_LETTER" || document.paperSize === "A4") {
+            nextSettings.paperSize = document.paperSize;
+          }
+          if (Array.isArray(document.sections) && document.sections.length > 0) {
+            const ordered = [...document.sections].sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+            nextSettings.sectionOrder = ordered.map((item: any) => item.sectionKey).filter(Boolean);
+          }
+          setSettings(nextSettings);
+          setExistingDocument(true);
+          setServerDocumentTitle(document.title || document.label || "Untitled document");
+          setSavedState(`Opened server document: ${document.title || document.label || "document"}.`);
+          setMessage("Server document opened. Its template, paper size, and section order were applied. The profile fields below stay local, because a server document stores settings only, not the full profile. Load the server profile from the profile page to fill them in.");
+          setActiveJobVersionId("");
+        } else if (document && document.profile) {
           setProfile(document.profile);
           setSettings(document.settings || createDefaultSettings());
           setExistingDocument(true);
@@ -229,6 +259,32 @@ export default function BuilderPage() {
     setProfile(clone(draft.profile));
     setSettings(clone(draft.settings));
     setMessage(`Restored ${draft.label}, saved ${draft.savedAt}.`);
+  }
+
+  async function saveToServer() {
+    if (!serverSession) {
+      setMessage("No server session was found. Sign in on the server first, on the account page. Your draft is still autosaved in this browser.");
+      return;
+    }
+    let label = serverDocumentTitle || "Master draft";
+    try {
+      label = window.localStorage.getItem("gcs-master-label") || label;
+    } catch {
+      label = serverDocumentTitle || "Master draft";
+    }
+    setMessage("Saving this draft to the server...");
+    try {
+      const draft = createDraft(profile, settings, label);
+      const saved = await saveServerDocument(undefined, serverSession, draft, edition);
+      setServerDocumentTitle(saved.title || label);
+      setMessage(`Saved to the server as "${saved.title || label}". The local autosaved draft is unchanged, and nothing was uploaded automatically before you pressed this button.`);
+    } catch (error: any) {
+      setMessage(
+        error?.code === "local_only" || error?.code === "unreachable"
+          ? "The server could not be reached, so nothing was saved to the server. Your draft is still autosaved in this browser."
+          : error?.message || "Save to server failed. Your local draft was not changed."
+      );
+    }
   }
 
   async function exportFile(format: "pdf" | "docx") {
@@ -467,14 +523,13 @@ export default function BuilderPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-        CV builder, local draft only
+        CV builder{serverSession ? ", signed in on the server" : ", local draft only"}
       </p>
       <h1 className="mt-2 text-3xl font-bold text-navy">Build your CV</h1>
       <p className="mt-3 text-slate-700">
-        Local draft account (placeholder, no real sign in). Starting data is
-        fictional and marked SAMPLE. Drafts are saved in this browser only
-        until a real database is connected. No price, payment, AI feature,
-        or verified history is claimed here.
+        {serverSession
+          ? `Signed in on the server as ${serverSession.email}. Starting data is fictional and marked SAMPLE. Drafts autosave in this browser, and Save to server below stores a copy on the server only when you press it.`
+          : "Local draft account. Starting data is fictional and marked SAMPLE. Drafts are saved in this browser only until you sign in on the server. No price, payment, AI feature, or verified history is claimed here."}
       </p>
       <p className="mt-4 rounded border border-slate-300 bg-white p-4">
         Current local plan: {subscriptionPlan === "trial" ? `Trial, ends ${subscriptionTrialEnd || "date not set"}` : subscriptionPlan === "premium" ? "Premium, local only" : "Free, local only"}. Entitlements are local browser state only, until a real database and Stripe are connected. No checkout or payment is shown here.
@@ -543,6 +598,15 @@ export default function BuilderPage() {
           >
             Save version
           </button>
+          {serverSession && (
+            <button
+              type="button"
+              className="mt-2 ml-2 rounded bg-navy px-3 py-2 text-sm text-white"
+              onClick={saveToServer}
+            >
+              Save to server
+            </button>
+          )}
         </div>
       </section>
 
