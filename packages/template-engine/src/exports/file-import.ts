@@ -65,6 +65,33 @@ export async function extractPdfText(buffer: Buffer): Promise<ExtractedFileText>
   return { text: allLines.join("\n"), lines: allLines, pageCount: doc.numPages };
 }
 
+// LinkedIn export ZIP helper, Phase 2 increment 12. A LinkedIn data
+// export archive is a ZIP of CSV files. This returns the CSV entries
+// only, with their full entry names, so the caller can match them by
+// file name. It uses adm-zip, already a template engine dependency,
+// and adds no new dependency. Non CSV entries are ignored here and
+// are not treated as an error by this helper.
+export interface ZipTextFile {
+  name: string;
+  text: string;
+}
+
+export function extractZipCsvFiles(buffer: Buffer): ZipTextFile[] {
+  const zip = new AdmZip(buffer);
+  const out: ZipTextFile[] = [];
+  for (const entry of zip.getEntries()) {
+    if (entry.isDirectory) {
+      continue;
+    }
+    const name = entry.entryName || "";
+    if (!name.toLowerCase().endsWith(".csv")) {
+      continue;
+    }
+    out.push({ name, text: entry.getData().toString("utf8") });
+  }
+  return out;
+}
+
 export function extractDocxText(buffer: Buffer): ExtractedFileText {
   const zip = new AdmZip(buffer);
   const entry = zip.getEntry("word/document.xml");
