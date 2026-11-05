@@ -45,6 +45,18 @@ export const designTokens = {
   // Minimum tap target, Increment 16, dossier rule 14. Every button,
   // link in the header, and form input is at least this tall.
   tapTarget: "44px",
+  // Motion, Increment 18. Subtle only: short ease-out transitions on
+  // cards and buttons, and a gentle rise on entry. Transform and
+  // opacity only, so it stays smooth on phones. All motion is off
+  // under prefers-reduced-motion in globals.css.
+  motion: {
+    fast: "150ms",
+    base: "180ms",
+    rise: "500ms",
+    ease: "ease-out",
+    lift: "-2px",
+    riseDistance: "8px"
+  },
   radii: {
     card: "0.75rem",
     button: "0.5rem",
