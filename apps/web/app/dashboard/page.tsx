@@ -19,14 +19,13 @@ import {
 import { edition } from "../../lib/config";
 import RequireAuth from "../components/RequireAuth";
 
-// Working dashboard, Phase 2 increment 15, server and local documents.
-// This replaces the increment 6 local only dashboard. When signed in
-// with a server session, it lists that user's documents from
-// /api/documents, labelled server, with open in builder and delete
-// through the server. Local browser documents are still listed,
-// labelled local, and are never silently dropped or overwritten.
-// Rename and duplicate stay local only, because the server API does
-// not offer them yet. AI credits, subscription, and human review are
+// Working dashboard, Phase 2 increment 17, saved and browser documents.
+// When signed in, it lists that user's saved documents from
+// /api/documents, with open in builder and delete through the
+// account. Drafts in this browser are still listed as well, and are
+// never silently dropped or overwritten. Rename and duplicate stay
+// in this browser only, because the saved document API does not
+// offer them yet. AI credits, subscription, and human review are
 // still clearly labelled not yet connected, and are not presented as
 // working features. No payment or AI is connected here.
 
@@ -39,7 +38,6 @@ const MASTER_LABEL_KEY = "gcs-master-label";
 
 export default function Dashboard() {
   const [sessionEmail, setSessionEmail] = useState("");
-  const [sessionMode, setSessionMode] = useState("");
   const [documents, setDocuments] = useState<any[]>([]);
   const [serverDocuments, setServerDocuments] = useState<any[]>([]);
   const [serverAvailable, setServerAvailable] = useState(false);
@@ -63,7 +61,7 @@ export default function Dashboard() {
       window.localStorage.setItem(DOCUMENTS_KEY, JSON.stringify(seeded));
       setDocuments(seeded);
     } catch {
-      setMessage("Local documents could not be loaded in this browser.");
+      setMessage("Drafts in this browser could not be loaded.");
       setDocuments([]);
     }
   }
@@ -83,8 +81,8 @@ export default function Dashboard() {
       setServerDocuments([]);
       setMessage(
         error?.code === "local_only" || error?.code === "unreachable"
-          ? "The server could not be reached, so server documents are not listed. Your local documents below are unchanged."
-          : error?.message || "Server documents could not be loaded."
+          ? "Your saved documents could not be loaded right now. Your drafts below are unchanged."
+          : error?.message || "Saved documents could not be loaded."
       );
     }
   }
@@ -96,15 +94,12 @@ export default function Dashboard() {
         const serverSession = readServerSession(window.localStorage);
         if (serverSession) {
           setSessionEmail(serverSession.email);
-          setSessionMode("server");
         }
       } else if (isSessionValid(session)) {
         setSessionEmail(session.email);
-        setSessionMode("local");
       }
     } catch {
       setSessionEmail("");
-      setSessionMode("");
     }
     loadDocuments();
     loadServerDocuments();
@@ -129,26 +124,26 @@ export default function Dashboard() {
   async function handleServerDelete(id: string, label: string) {
     const session = readServerSession(window.localStorage);
     if (!session) {
-      setMessage("No server session was found, so the server document was not deleted.");
+      setMessage("No signed-in session was found, so the saved document was not deleted.");
       return;
     }
-    if (!window.confirm(`Delete "${label}" from the server? This removes the server copy. Your local drafts are not touched.`)) {
-      setMessage("Delete cancelled. The server document was not removed.");
+    if (!window.confirm(`Delete "${label}" from your account? This removes the saved copy. Your drafts in this browser are not touched.`)) {
+      setMessage("Delete cancelled. The saved document was not removed.");
       return;
     }
     try {
       await deleteServerDocument(undefined, session, id);
       setServerDocuments((current: any[]) => current.filter((item: any) => item.id !== id));
-      setMessage(`Server document deleted: ${label}.`);
+      setMessage(`Saved document deleted: ${label}.`);
     } catch (error: any) {
-      setMessage(error?.message || "Server delete failed. The document was not removed.");
+      setMessage(error?.message || "Delete failed. The document was not removed.");
     }
   }
 
   function handleDuplicate(id: string) {
     try {
       persist(duplicateDocument(documents, id));
-      setMessage("Document duplicated locally. The original was not changed.");
+      setMessage("Document duplicated. The original was not changed.");
     } catch (error: any) {
       setMessage(error?.message || "Duplicate failed.");
     }
@@ -162,68 +157,68 @@ export default function Dashboard() {
       }
       setRenameId("");
       setRenameValue("");
-      setMessage("Document renamed locally.");
+      setMessage("Document renamed.");
     } catch (error: any) {
       setMessage(error?.message || "Rename failed. A name is required.");
     }
   }
 
   function handleDelete(id: string, label: string) {
-    if (!window.confirm(`Delete "${label}" from the local list? This does not delete a server copy.`)) {
+    if (!window.confirm(`Delete "${label}" from the drafts in this browser? This does not delete a saved copy.`)) {
       setMessage("Delete cancelled. The document was not removed.");
       return;
     }
     persist(deleteDocument(documents, id, true));
-    setMessage(`Document deleted locally: ${label}.`);
+    setMessage(`Draft deleted: ${label}.`);
   }
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <RequireAuth>
-      <p className="eyebrow">Dashboard{sessionMode === "server" ? ", server and local documents" : ", local drafts only"}</p>
+      <p className="eyebrow">Dashboard</p>
       <h1 className="page-title">Dashboard</h1>
       <p className="mt-3 text-ink">{editionConfig.dashboardIntro}</p>
       <p className="mt-4 notice text-ink">
-        {siteConfig.status} {sessionEmail ? (sessionMode === "server" ? `Signed in on the server as ${sessionEmail}.` : `Signed in locally as ${sessionEmail}.`) : "Not signed in. The documents below are local browser drafts only, not server documents."} No payment or AI is connected here.
+        {siteConfig.status} {sessionEmail ? `Signed in as ${sessionEmail}.` : "Not signed in. The documents below are drafts in this browser."} No payment or AI is connected here.
       </p>
       <p className="mt-4 flex flex-wrap gap-2">
         <a className="btn-primary" href="/builder">Open the CV builder</a>
         <a className="btn-secondary" href="/auth">Account</a>
         <a className="btn-secondary" href="/profile">Edit master profile</a>
-        <a className="btn-secondary" href="/writer">Local writer</a>
+        <a className="btn-secondary" href="/writer">Writer</a>
         <a className="btn-secondary" href="/letters">Letter studio</a>
         <a className="btn-secondary" href="/ats">ATS check, heuristic only</a>
-        <a className="btn-secondary" href="/subscription">Subscription, local only</a>
+        <a className="btn-secondary" href="/subscription">Subscription</a>
       </p>
 
       {serverAvailable && (
         <>
-          <h2 className="mt-8 section-title">Your documents on the server</h2>
+          <h2 className="mt-8 section-title">Your documents saved with your account</h2>
           {serverDocuments.length === 0 ? (
-            <p className="mt-3 text-ink">No server documents yet. Open the builder and use Save to server to store a copy there.</p>
+            <p className="mt-3 text-ink">No saved documents yet. Open the builder and use Save to my account to store a copy there.</p>
           ) : (
             <ul className="mt-4 space-y-3">
               {serverDocuments.map((document: any) => (
                 <li key={document.id} className="card">
                   <p className="font-semibold">{document.title || "Untitled document"}</p>
                   <p className="text-sm text-muted">
-                    Server document | Template: {document.templateId || "not set"} | Paper: {document.paperSize === "US_LETTER" ? "US Letter" : "A4"} | Updated: {document.updatedAt || "not set"}
+                    Saved document | Template: {document.templateId || "not set"} | Paper: {document.paperSize === "US_LETTER" ? "US Letter" : "A4"} | Updated: {document.updatedAt || "not set"}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button type="button" className="btn-secondary" onClick={() => openServerInBuilder(document)}>Open in builder</button>
-                    <button type="button" className="btn-danger" onClick={() => handleServerDelete(document.id, document.title || "Untitled document")}>Delete from server, with confirmation</button>
+                    <button type="button" className="btn-danger" onClick={() => handleServerDelete(document.id, document.title || "Untitled document")}>Delete from my account, with confirmation</button>
                   </div>
                 </li>
               ))}
             </ul>
           )}
-          <p className="mt-3 text-sm text-muted">Server documents store the title, template, paper size, and section order. The full profile content is stored separately on the profile page, not inside a server document. Rename and duplicate are not offered for server documents yet.</p>
+          <p className="mt-3 text-sm text-muted">Saved documents store the title, template, paper size, and section order. The full profile content is stored separately on the profile page, not inside a saved document. Rename and duplicate are not offered for saved documents yet.</p>
         </>
       )}
 
-      <h2 className="mt-8 section-title">Your documents in this browser, local only</h2>
+      <h2 className="mt-8 section-title">Your drafts in this browser</h2>
       {documents.length === 0 ? (
-        <p className="mt-3 text-ink">No local documents yet. Open the builder to create a draft, or import a CV there.</p>
+        <p className="mt-3 text-ink">No drafts yet. Open the builder to create a draft, or import a CV there.</p>
       ) : (
         <ul className="mt-4 space-y-3">
           {documents.map((document: any) => (
@@ -258,17 +253,17 @@ export default function Dashboard() {
           <p className="mt-2"><a className="brand-link" href="/builder">Open the builder</a></p>
         </div>
         <div className="card">
-          <h3 className="font-semibold">Local writer, letters, and ATS check</h3>
-          <p className="mt-2 text-ink">Local drafting assistance, letter studio, and a heuristic ATS check are now working, in this browser only. No AI provider is connected, so no AI credits are shown.</p>
-          <p className="mt-2"><a className="brand-link" href="/writer">Open the local writer</a></p>
+          <h3 className="font-semibold">Writer, letters, and ATS check</h3>
+          <p className="mt-2 text-ink">Drafting assistance, letter studio, and a heuristic ATS check are working, in this browser. No AI provider is connected, so no AI credits are shown.</p>
+          <p className="mt-2"><a className="brand-link" href="/writer">Open the writer</a></p>
         </div>
         <div className="card">
           <h3 className="font-semibold">AI credits</h3>
           <p className="mt-2 text-ink">Not yet connected. No connected AI generation and no credit balance is shown here, because no AI provider is connected.</p>
         </div>
         <div className="card">
-          <h3 className="font-semibold">Subscription, local only</h3>
-          <p className="mt-2 text-ink">Local plan config only, in this browser. No payment, price, or Stripe account has been decided, and no checkout is working. Trial, entitlements, downgrade behaviour, and local cancel are shown on the subscription page.</p>
+          <h3 className="font-semibold">Subscription</h3>
+          <p className="mt-2 text-ink">Plan settings only, in this browser. No payment, price, or Stripe account has been decided, and no checkout is working. Trial, entitlements, downgrade behaviour, and cancel are shown on the subscription page.</p>
           <p className="mt-2"><a className="brand-link" href="/subscription">Open the subscription page</a></p>
         </div>
         <div className="card">
