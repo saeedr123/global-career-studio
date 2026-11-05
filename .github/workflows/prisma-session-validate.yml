@@ -1,0 +1,99 @@
+# Prisma session validate, Phase 2 increment 14.
+# Runs on GitHub Actions only. This workspace cannot run GitHub
+# Actions and cannot check a run status, so a push of this file
+# does not claim a passed run. The first run result must be read
+# on GitHub before the schema, including the new Session model,
+# is treated as validated. Same pattern as
+# .github/workflows/prisma-validate.yml from increment 12, which
+# passed in CI on 2026-11-05. There is no package.json at the repo
+# root, so Prisma is installed in a separate prisma-ci folder in
+# the runner, not in the repo root and not in apps/web. The schema
+# stays PostgreSQL, checksums are not ignored, no migration file
+# is committed from CI, and no real database is touched: db push
+# and migrate deploy run only against the ephemeral Postgres
+# service container in this same workflow. The DATABASE_URL below
+# is the same ephemeral localhost test URL used by the increment
+# 12 validate workflow, not a Neon URL and not a production URL.
+# The committed Session migration in
+# prisma/migrations/20261105080000_add_session/migration.sql is
+# also deployed to the ephemeral test database here, which proves
+# it applies. That migration has NOT been applied to the live Neon
+# database in this increment: the live database still needs the
+# owner to run the manual Neon migrate deploy workflow on GitHub
+# once, after this increment is pushed.
+name: Prisma session validate
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "prisma/**"
+      - ".github/workflows/prisma-session-validate.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "prisma/**"
+      - ".github/workflows/prisma-session-validate.yml"
+
+jobs:
+  prisma-session-validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: gcs_test
+          POSTGRES_PASSWORD: gcs_test_password
+          POSTGRES_DB: gcs_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install Prisma CLI in a separate folder
+        run: |
+          mkdir -p prisma-ci
+          cd prisma-ci
+          npm init -y
+          npm install prisma@6.14.0
+      - name: Validate schema, including the new Session model
+        env:
+          DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+          DIRECT_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma validate --schema prisma/schema.prisma
+      - name: Generate Prisma client with a dummy URL
+        env:
+          DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+          DIRECT_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma generate --schema prisma/schema.prisma
+      - name: Deploy the committed migrations to the ephemeral test database only
+        env:
+          DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+          DIRECT_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma
+      - name: Confirm the migration status is up to date
+        env:
+          DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+          DIRECT_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma migrate status --schema prisma/schema.prisma
+      - name: Apply schema to the ephemeral test database only
+        env:
+          DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+          DIRECT_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma db push --schema prisma/schema.prisma --skip-generate
