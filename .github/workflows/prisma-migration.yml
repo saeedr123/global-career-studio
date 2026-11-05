@@ -1,0 +1,98 @@
+# Prisma migration, Phase 2 increment 13.
+# Runs on GitHub Actions only. This workspace cannot run GitHub
+# Actions and cannot check a run status, so a push of this file
+# does not claim a passed run. The first run result must be read
+# on GitHub before the migration is treated as proved.
+# What this workflow does, in order:
+# 1. Validates prisma/schema.prisma.
+# 2. Runs prisma migrate diff from empty to the schema and uploads
+#    the generated SQL as an artifact, for review against the
+#    committed migration. The committed migration in
+#    prisma/migrations/20261105000000_init/migration.sql was authored
+#    from the schema in this increment, because the Prisma engine
+#    download fails in this workspace, so the diff artifact is the
+#    Prisma generated comparison, not a local claim.
+# 3. Runs prisma migrate deploy with the committed migration against
+#    the ephemeral Postgres 15 service container in this same
+#    workflow, which proves the migration applies.
+# 4. Runs prisma migrate status, which must report the database
+#    schema as up to date after the deploy.
+# No real database is touched: deploy runs only against the
+# ephemeral Postgres service container. The DATABASE_URL below is
+# the same ephemeral localhost test URL used by the increment 12
+# validate workflow, not a Neon URL and not a production URL. The
+# provider stays PostgreSQL, checksums are not ignored, and no
+# migration is run against any real database here. The workflow for
+# a real Neon database is neon-migrate-deploy.yml, manual only.
+name: Prisma migration
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "prisma/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "prisma/**"
+  workflow_dispatch:
+
+jobs:
+  prisma-migration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: gcs_test
+          POSTGRES_PASSWORD: gcs_test_password
+          POSTGRES_DB: gcs_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install Prisma CLI in a separate folder
+        run: |
+          mkdir -p prisma-ci
+          cd prisma-ci
+          npm init -y
+          npm install prisma@6.14.0
+      - name: Validate schema
+        env:
+          DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma validate --schema prisma/schema.prisma
+      - name: Generate migration SQL from the schema for review
+        env:
+          DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > /tmp/prisma-generated-migration.sql
+          test -s /tmp/prisma-generated-migration.sql
+          wc -l /tmp/prisma-generated-migration.sql
+      - name: Upload generated migration SQL as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prisma-generated-migration
+          path: /tmp/prisma-generated-migration.sql
+      - name: Deploy the committed migration to the ephemeral test database only
+        env:
+          DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma
+      - name: Confirm the migration status is up to date
+        env:
+          DATABASE_URL: postgresql://gcs_test:gcs_test_password@localhost:5432/gcs_test
+        run: |
+          ./prisma-ci/node_modules/.bin/prisma migrate status --schema prisma/schema.prisma
