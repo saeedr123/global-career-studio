@@ -101,6 +101,61 @@ check("token file defines a type scale and a 44px tap target", () => {
   assert.ok(tokens.includes('tapTarget: "44px"'), "tap target 44px is missing");
 });
 
+check("token file defines motion values, Increment 18", () => {
+  assert.ok(tokens.includes("motion:"), "motion tokens are missing");
+  assert.ok(tokens.includes('fast: "150ms"'), "motion fast value is missing");
+  assert.ok(tokens.includes('rise: "500ms"'), "motion rise value is missing");
+  assert.ok(tokens.includes('lift: "-2px"'), "motion lift value is missing");
+});
+
+check("cards lift subtly on hover and focus with a gold border", () => {
+  const css = read("app/globals.css");
+  assert.ok(css.includes(".card:hover"), "no card hover rule");
+  assert.ok(css.includes(".card:focus-within"), "no card focus rule");
+  assert.ok(css.includes("translateY(var(--motion-lift))"), "card lift does not use the motion lift token");
+  assert.ok(css.includes("border-color: var(--color-gold)"), "card hover has no gold border accent");
+  assert.ok(css.includes("transition: transform var(--motion-base)"), "card has no transform transition");
+});
+
+check("buttons have smooth hover and press states", () => {
+  const css = read("app/globals.css");
+  assert.ok(css.includes(".btn-primary:active"), "no primary button press state");
+  assert.ok(css.includes(".btn-secondary:active"), "no secondary button press state");
+  assert.ok(css.includes("translateY(1px)"), "no button press shift");
+  assert.ok(css.includes("transition: background-color var(--motion-fast)"), "primary button has no smooth transition");
+});
+
+check("hero carries a soft gold accent", () => {
+  const css = read("app/globals.css");
+  const hero = css.split(".hero {")[1].split("}")[0];
+  assert.ok(hero.includes("radial-gradient"), "hero has no gold accent treatment");
+  assert.ok(hero.includes("rgba(217, 164, 65"), "hero accent does not use the gold token colour");
+});
+
+check("entrance animation ends at full opacity and respects reduced motion", () => {
+  const css = read("app/globals.css");
+  assert.ok(css.includes("@keyframes rise"), "no rise keyframes");
+  const keyframes = css.split("@keyframes rise")[1].split("\n}\n")[0];
+  assert.ok(keyframes.includes("opacity: 1"), "rise keyframes do not end at full opacity");
+  assert.ok(keyframes.includes("transform: translateY(0)"), "rise keyframes do not end at rest");
+  assert.ok(css.includes(".reveal"), "no reveal class");
+  assert.ok(css.includes("@media (prefers-reduced-motion: reduce)"), "no reduced motion rule");
+  const reduced = css.split("@media (prefers-reduced-motion: reduce)")[1];
+  assert.ok(reduced.includes(".reveal"), "reduced motion does not switch the reveal class off");
+  assert.ok(reduced.includes("animation: none"), "reduced motion does not disable the reveal animation");
+  assert.ok(reduced.includes("transition-duration: 0.01ms"), "reduced motion does not neutralise transitions");
+  const landingCopy = read("app/page.tsx");
+  const reveals = (landingCopy.match(/reveal/g) || []).length;
+  assert.ok(reveals >= 4, `landing page uses the reveal class ${reveals} times, expected at least 4`);
+});
+
+check("motion uses transform and opacity only, no new images or video", () => {
+  const css = read("app/globals.css");
+  assert.ok(!css.toLowerCase().includes("parallax"), "motion includes parallax");
+  assert.ok(!css.includes("url("), "motion adds an image");
+  assert.ok(!css.toLowerCase().includes("slider"), "motion adds a slider");
+});
+
 const layout = read("app/layout.tsx");
 
 check("layout renders the header and footer landmarks", () => {
@@ -122,9 +177,22 @@ check("header takes its wordmark from the edition config, never hard coded", () 
   assert.ok(!header.includes("Global Career Studio"), "header hard codes the commercial brand name");
 });
 
-check("footer takes its operator line from the edition config, never hard coded", () => {
-  assert.ok(footer.includes("editionConfig.footerOperatorLine"), "footer does not read footerOperatorLine from config");
-  assert.ok(!footer.includes("23038594"), "footer hard codes the operator IČO");
+check("footer carries no operator line at all, Increment 18", () => {
+  const footerCopy = stripComments(footer);
+  assert.ok(!footerCopy.includes("23038594"), "footer still shows the operator IČO");
+  assert.ok(!footerCopy.includes("IČO"), "footer still shows the IČO label");
+  assert.ok(!footerCopy.includes("trading name of Saeed Rasul"), "footer still shows the trading name line");
+  assert.ok(!footerCopy.includes("footerOperatorLine"), "footer still reads an operator line from config");
+  assert.ok(!footerCopy.includes("Operator"), "footer still has an Operator column");
+  assert.ok(footerCopy.includes('href="/builder"'), "footer lost the free builder link");
+  assert.ok(footerCopy.includes('href="/auth"'), "footer lost the sign-in link");
+  assert.ok(footerCopy.includes("https://nvconsult.eu"), "footer lost the nvconsult.eu trust link");
+});
+
+check("config no longer defines a footer operator line", () => {
+  const config = read("lib/config.ts");
+  assert.ok(!config.includes("footerOperatorLine"), "config still defines footerOperatorLine");
+  assert.ok(!config.includes("23038594"), "config still carries the operator IČO");
 });
 
 const landing = read("app/page.tsx");
