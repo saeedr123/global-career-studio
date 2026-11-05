@@ -60,7 +60,7 @@ export const editionConfig: EditionConfig = editionConfigs[edition];
 export const siteConfig = {
   name: editionConfig.brandName,
   tagline: editionConfig.tagline,
-  status: "Local auth and dashboard, Phase 2 increment 6. Not a finished product, and no database is connected yet.",
+  status: "Database layer ready for Neon, Phase 2 increment 13. Not a finished product, and no database is connected yet.",
   edition: editionConfig.edition,
   features: {
     accountsEnabled: false,
