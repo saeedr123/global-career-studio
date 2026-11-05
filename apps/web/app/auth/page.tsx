@@ -5,8 +5,6 @@ import {
   createAccount,
   isSessionValid,
   login,
-  requestPasswordReset,
-  resetPassword,
   validateLogin,
   validateSignup
 } from "../../lib/auth-core.mjs";
@@ -19,19 +17,22 @@ import {
   serverSignup,
   storeServerSession
 } from "../../lib/session-client.mjs";
-import { edition } from "../../lib/config";
+import { edition, editionConfig } from "../../lib/config";
 
-// Account page, Phase 2 increment 15.
-// When the server is available, signup and login go through
-// /api/auth and the returned session token is stored in
-// localStorage under gcs-session, mode server, so the account and
-// documents sync across devices. The token is never displayed and
-// never logged. When the server answers 501, or cannot be reached,
-// the page falls back to the local browser auth in
-// lib/auth-core.mjs and says so plainly, and local accounts stay
-// local. Password reset is not available on the server yet, because
-// no email is sent, so reset stays local only. No password is ever
-// stored in plain text, on the server or in this browser.
+// Account page, Phase 2 increment 17.
+// One flow only: sign up and sign in with an email address and a
+// password, name on sign up, password at least 8 characters. There
+// is no choice between account types any more. When the server is
+// available, signup and login go through /api/auth and the returned
+// session token is stored in localStorage under gcs-session, so the
+// account and documents are saved with the account. The token is
+// never displayed and never logged. When the server answers 501, or
+// cannot be reached, the page falls back silently to the browser
+// account in lib/auth-core.mjs, and says only that drafts are saved
+// in this browser. No password is ever stored in plain text.
+// Password reset by email is not set up yet, because no email is
+// sent, so the Forgot password view says so plainly and points to
+// the free consultation instead of promising a reset email.
 
 const ACCOUNTS_KEY = "gcs-accounts";
 const SESSION_KEY = "gcs-session";
@@ -53,17 +54,13 @@ function readStoredSession() {
 }
 
 export default function AuthPage() {
-  const [mode, setMode] = useState<"signup" | "login" | "reset-request" | "reset">("signup");
+  const [mode, setMode] = useState<"signup" | "login" | "reset-request">("signup");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [resetToken, setResetToken] = useState("");
-  const [shownResetToken, setShownResetToken] = useState("");
   const [sessionEmail, setSessionEmail] = useState("");
-  const [sessionMode, setSessionMode] = useState("");
   const [serverAvailable, setServerAvailable] = useState<boolean | null>(null);
-  const [accountMode, setAccountMode] = useState<"server" | "local">("server");
   const [message, setMessage] = useState("");
 
   function safeNextPath() {
@@ -93,21 +90,24 @@ export default function AuthPage() {
       const serverSession = readServerSession(window.localStorage);
       if (serverSession) {
         setSessionEmail(serverSession.email);
-        setSessionMode("server");
         redirectAfterSignIn();
       }
     } else if (isSessionValid(stored)) {
       setSessionEmail(stored.email);
-      setSessionMode("local");
       redirectAfterSignIn();
     }
     checkServerAvailable().then((result) => {
       setServerAvailable(result.available);
-      if (!result.available) {
-        setAccountMode("local");
-      }
     });
   }, []);
+
+  async function createBrowserAccount() {
+    const result = await createAccount(readAccounts(), { name, email, password, confirmPassword }, edition);
+    window.localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(result.accounts));
+    const loginResult = await login(result.accounts, email, password);
+    window.localStorage.setItem(SESSION_KEY, JSON.stringify({ ...loginResult.session, mode: "local" }));
+    setSessionEmail(loginResult.session.email);
+  }
 
   async function handleSignup(event: any) {
     event.preventDefault();
@@ -116,7 +116,7 @@ export default function AuthPage() {
       setMessage(`Please fix: ${errors.join(", ")}. Password must be at least 8 characters.`);
       return;
     }
-    if (accountMode === "server" && serverAvailable) {
+    if (serverAvailable !== false) {
       try {
         const result = await serverSignup(undefined, { name, email, password, confirmPassword, edition });
         storeServerSession(window.localStorage, {
@@ -126,27 +126,19 @@ export default function AuthPage() {
           expiresAt: result.expiresAt
         });
         setSessionEmail(result.account.email);
-        setSessionMode("server");
-        setMessage("Server account created and signed in. Your account syncs across devices, and documents you save to the server are stored there.");
+        setMessage("Account created and signed in. Your documents are saved with your account.");
         redirectAfterSignIn();
         return;
       } catch (error: any) {
-        if (error?.code === "local_only" || error?.code === "unreachable") {
-          setMessage("The server was not available, so a local account was created instead, in this browser only.");
-        } else {
-          setMessage(error?.message || "Server signup failed.");
+        if (error?.code !== "local_only" && error?.code !== "unreachable") {
+          setMessage(error?.message || "Signup failed.");
           return;
         }
       }
     }
     try {
-      const result = await createAccount(readAccounts(), { name, email, password, confirmPassword }, edition);
-      window.localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(result.accounts));
-      const loginResult = await login(result.accounts, email, password);
-      window.localStorage.setItem(SESSION_KEY, JSON.stringify({ ...loginResult.session, mode: "local" }));
-      setSessionEmail(loginResult.session.email);
-      setSessionMode("local");
-      setMessage("Local account created and signed in, in this browser only. No server account was created.");
+      await createBrowserAccount();
+      setMessage("Account created and signed in. Your drafts are saved in this browser.");
       redirectAfterSignIn();
     } catch (error: any) {
       setMessage(error?.message || "Signup failed in this browser.");
@@ -160,7 +152,7 @@ export default function AuthPage() {
       setMessage(`Please fix: ${errors.join(", ")}.`);
       return;
     }
-    if (accountMode === "server" && serverAvailable) {
+    if (serverAvailable !== false) {
       try {
         const result = await serverLogin(undefined, { email, password });
         storeServerSession(window.localStorage, {
@@ -170,15 +162,12 @@ export default function AuthPage() {
           expiresAt: result.expiresAt
         });
         setSessionEmail(result.account.email);
-        setSessionMode("server");
-        setMessage("Signed in on the server. Your documents on the server are listed on the dashboard.");
+        setMessage("Signed in. Your saved documents are listed on the dashboard.");
         redirectAfterSignIn();
         return;
       } catch (error: any) {
-        if (error?.code === "local_only" || error?.code === "unreachable") {
-          setMessage("The server was not available, so signing in locally instead, in this browser only.");
-        } else {
-          setMessage(error?.message || "Server login failed.");
+        if (error?.code !== "local_only" && error?.code !== "unreachable") {
+          setMessage(error?.message || "Login failed.");
           return;
         }
       }
@@ -187,8 +176,7 @@ export default function AuthPage() {
       const result = await login(readAccounts(), email, password);
       window.localStorage.setItem(SESSION_KEY, JSON.stringify({ ...result.session, mode: "local" }));
       setSessionEmail(result.session.email);
-      setSessionMode("local");
-      setMessage("Signed in locally, in this browser only.");
+      setMessage("Signed in. Your drafts in this browser are unchanged.");
       redirectAfterSignIn();
     } catch (error: any) {
       setMessage(error?.message || "Login failed in this browser.");
@@ -196,80 +184,32 @@ export default function AuthPage() {
   }
 
   async function handleLogout() {
-    if (sessionMode === "server") {
+    if (readServerSession(window.localStorage)) {
       await serverLogout(undefined, window.localStorage);
-      setSessionEmail("");
-      setSessionMode("");
-      setMessage("Signed out on the server. Your local drafts are still in this browser.");
-      return;
+    } else {
+      clearServerSession(window.localStorage);
     }
-    clearServerSession(window.localStorage);
     setSessionEmail("");
-    setSessionMode("");
-    setMessage("Signed out locally. Your local drafts are still in this browser.");
+    setMessage("Signed out. Your drafts are still in this browser.");
   }
-
-  function handleResetRequest(event: any) {
-    event.preventDefault();
-    if (accountMode === "server") {
-      setMessage("Password reset is not available on the server yet, because no email is sent. Use a local account to reset a local password, or sign in on the server with your existing password.");
-      return;
-    }
-    const result = requestPasswordReset(readAccounts(), email);
-    if (!result.found) {
-      setShownResetToken("");
-      setMessage("No local account was found for this email, so no reset token was created. This avoids confirming which emails have local accounts.");
-      return;
-    }
-    window.localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(result.accounts));
-    setShownResetToken(result.token || "");
-    setMode("reset");
-    setMessage("Local reset token created. No email was sent, because no email service is connected. The token below is shown here for local testing only, and it expires in 1 hour.");
-  }
-
-  async function handleReset(event: any) {
-    event.preventDefault();
-    try {
-      const result = await resetPassword(readAccounts(), resetToken, password, confirmPassword);
-      window.localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(result.accounts));
-      setShownResetToken("");
-      setMode("login");
-      setMessage("Local password reset. Sign in with the new password, in this browser only.");
-    } catch (error: any) {
-      setMessage(error?.message || "Password reset failed in this browser.");
-    }
-  }
-
-  const signedInLabel = sessionMode === "server" ? "Server account" : "Local account, not a server account";
 
   return (
     <main className="mx-auto max-w-xl px-4 py-8 sm:px-6">
-      <p className="eyebrow">{signedInLabel}</p>
       <h1 className="page-title">Account</h1>
       <p className="mt-3 text-ink">
         {serverAvailable === null
-          ? "Checking whether the server is available..."
-          : serverAvailable
-            ? "Server accounts are available. A server account syncs across devices. A local account lives only in this browser."
-            : "The server is not available here, so accounts are local browser accounts only. Try again later, or continue with a local account."}
-        {" "}Passwords are hashed, never stored in plain text, and no payment, AI, or real email is connected here.
+          ? "Checking your account..."
+          : "Create your account with your email address and a password, at least 8 characters. Your documents are saved with your account. Passwords are hashed, never stored in plain text, and no payment, AI, or real email is connected here."}
       </p>
       {sessionEmail ? (
         <div className="mt-4 notice-success">
-          <p>Signed in {sessionMode === "server" ? "on the server" : "locally"} as {sessionEmail}.</p>
-          <button type="button" className="mt-3 btn-secondary" onClick={handleLogout}>Sign out{sessionMode === "server" ? " on the server" : " locally"}</button>
+          <p>Signed in as {sessionEmail}.</p>
+          <button type="button" className="mt-3 btn-secondary" onClick={handleLogout}>Sign out</button>
           <p className="mt-3"><a className="brand-link" href="/dashboard">Go to the dashboard</a></p>
           <p className="mt-2"><a className="brand-link" href="/profile">Edit your profile</a></p>
         </div>
       ) : (
-        <p className="mt-4 notice">Not signed in. Your builder drafts are still available in this browser, but they are not tied to a server account yet.</p>
-      )}
-      {serverAvailable && (
-        <div className="mt-6 flex flex-wrap gap-2">
-          <button type="button" className="btn-secondary" onClick={() => setAccountMode("server")}>Use a server account</button>
-          <button type="button" className="btn-secondary" onClick={() => setAccountMode("local")}>Use a local browser account instead</button>
-          <span className="self-center text-sm text-muted">Now using: {accountMode === "server" ? "server account" : "local browser account"}.</span>
-        </div>
+        <p className="mt-4 notice">Not signed in. Your builder drafts are still available in this browser.</p>
       )}
       <div className="mt-6 flex flex-wrap gap-2">
         <button type="button" className="btn-secondary" onClick={() => setMode("signup")}>Sign up</button>
@@ -282,30 +222,23 @@ export default function AuthPage() {
           <label className="block">Email<input className="mt-1 input-field" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <label className="block">Password, at least 8 characters<input type="password" className="mt-1 input-field" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
           <label className="block">Confirm password<input type="password" className="mt-1 input-field" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label>
-          <button type="submit" className="btn-primary">Create {accountMode === "server" ? "server" : "local"} account</button>
+          <button type="submit" className="btn-primary">Create account</button>
         </form>
       )}
       {mode === "login" && (
         <form className="mt-6 space-y-3" onSubmit={handleLogin}>
           <label className="block">Email<input className="mt-1 input-field" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <label className="block">Password<input type="password" className="mt-1 input-field" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-          <button type="submit" className="btn-primary">Sign in {accountMode === "server" ? "on the server" : "locally"}</button>
+          <button type="submit" className="btn-primary">Sign in</button>
         </form>
       )}
       {mode === "reset-request" && (
-        <form className="mt-6 space-y-3" onSubmit={handleResetRequest}>
-          <label className="block">Email<input className="mt-1 input-field" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-          <button type="submit" className="btn-primary">Request local reset token</button>
-        </form>
-      )}
-      {mode === "reset" && (
-        <form className="mt-6 space-y-3" onSubmit={handleReset}>
-          {shownResetToken && <p className="notice">Local reset token, shown here only because no email is sent: {shownResetToken}</p>}
-          <label className="block">Reset token<input className="mt-1 input-field" value={resetToken} onChange={(event) => setResetToken(event.target.value)} /></label>
-          <label className="block">New password, at least 8 characters<input type="password" className="mt-1 input-field" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-          <label className="block">Confirm new password<input type="password" className="mt-1 input-field" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label>
-          <button type="submit" className="btn-primary">Reset local password</button>
-        </form>
+        <div className="mt-6 card">
+          <h2 className="font-semibold">Forgot your password</h2>
+          <p className="mt-2 text-ink">Password reset by email is not set up yet. No reset email is sent, so there is no reset link to request here.</p>
+          <p className="mt-2 text-ink">If you cannot sign in, book a free consultation and we will help you get back into your account.</p>
+          <p className="mt-3"><a className="brand-link" href={editionConfig.footerHelpHref}>{editionConfig.footerHelpLabel}</a></p>
+        </div>
       )}
       {message && <p className="mt-4 text-ink">{message}</p>}
     </main>
