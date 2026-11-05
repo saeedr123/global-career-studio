@@ -60,7 +60,8 @@ const changedFiles = [
   "lib/design-tokens.ts",
   "lib/config.ts",
   "lib/builder-core.mjs",
-  "lib/session-client.mjs"
+  "lib/session-client.mjs",
+  "scripts/test-rich-footer.mjs"
 ];
 
 // App pages that require a sign-in, gated by RequireAuth.
@@ -187,6 +188,13 @@ check("footer carries no operator line at all, Increment 18", () => {
   assert.ok(footerCopy.includes('href="/builder"'), "footer lost the free builder link");
   assert.ok(footerCopy.includes('href="/auth"'), "footer lost the sign-in link");
   assert.ok(footerCopy.includes("https://nvconsult.eu"), "footer lost the nvconsult.eu trust link");
+});
+
+check("footer carries no sample-data line, Increment 20", () => {
+  const footerCopy = stripComments(footer);
+  assert.ok(!footerCopy.includes("Sample data is fictional"), "footer still shows the sample-data line");
+  assert.ok(!footerCopy.includes("SAMPLE"), "footer still mentions SAMPLE");
+  assert.ok(!footerCopy.includes("never presented as a real user"), "footer still carries the sample disclaimer");
 });
 
 check("config no longer defines a footer operator line", () => {
