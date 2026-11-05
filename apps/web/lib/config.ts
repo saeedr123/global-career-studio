@@ -24,6 +24,14 @@ export interface EditionConfig {
   headerHelpHref: string;
   dashboardIntro: string;
   humanHelpNote: string;
+  // Footer, Increment 16. The operator line is checkable trust
+  // information and belongs to the NVConsult edition only. The
+  // commercial edition leaves it empty and never shows NVConsult
+  // operator details as its own.
+  footerOperatorLine: string;
+  footerHelpLabel: string;
+  footerHelpHref: string;
+  footerNote: string;
 }
 
 const editionConfigs: Record<Edition, EditionConfig> = {
@@ -35,7 +43,11 @@ const editionConfigs: Record<Edition, EditionConfig> = {
     headerHelpLabel: "Get human help",
     headerHelpHref: "https://nvconsult.eu",
     dashboardIntro: "This is the NVConsult edition. Start with the free tier, then ask for a human check before you apply.",
-    humanHelpNote: "Placeholder: human review and free consultation are offered through NVConsult. No real booking, review, or payment is connected in this shell."
+    humanHelpNote: "Human review is offered through NVConsult. Ask for it through the free consultation, and it is arranged personally after the call. No payment is taken in this app.",
+    footerOperatorLine: "NVConsult is a trading name of Saeed Rasul. IČO: 23038594, Brno, Czech Republic. info@nvconsult.eu",
+    footerHelpLabel: "Free consultation",
+    footerHelpHref: "https://nvconsult.eu",
+    footerNote: "Free beta. No payment is taken in this app."
   },
   commercial: {
     edition: "commercial",
@@ -45,7 +57,11 @@ const editionConfigs: Record<Edition, EditionConfig> = {
     headerHelpLabel: "Need human help?",
     headerHelpHref: "https://nvconsult.eu",
     dashboardIntro: "This is the commercial edition. Start with the free tier, and upgrade only when premium features are needed.",
-    humanHelpNote: "Placeholder: a small link to NVConsult human help. No real booking, review, or payment is connected in this shell."
+    humanHelpNote: "Human help is offered through NVConsult. Ask for it through the free consultation linked in the header. No payment is taken in this app.",
+    footerOperatorLine: "",
+    footerHelpLabel: "Need human help?",
+    footerHelpHref: "https://nvconsult.eu",
+    footerNote: "Free beta. No payment is taken in this app."
   }
 };
 
@@ -60,11 +76,11 @@ export const editionConfig: EditionConfig = editionConfigs[edition];
 export const siteConfig = {
   name: editionConfig.brandName,
   tagline: editionConfig.tagline,
-  status: "Database layer ready for Neon, Phase 2 increment 13. Not a finished product, and no database is connected yet.",
+  status: "Free beta, live on tools.nvconsult.eu. Server accounts and documents work. No payment and no connected AI generation yet.",
   edition: editionConfig.edition,
   features: {
-    accountsEnabled: false,
-    accountsLocalOnlyEnabled: true,
+    accountsEnabled: true,
+    accountsLocalOnlyEnabled: false,
     paymentsEnabled: false,
     aiEnabled: false,
     templateProofEnabled: true,
