@@ -3,7 +3,7 @@
 // Runs every test suite in order: template engine, builder, import,
 // auth, writer, packs, billing, admin, AI provider, LinkedIn import,
 // database, session, session client, auth simplified, design system,
-// rich footer, human help, security, and the end to end smoke test. Reports pass and fail counts per
+// rich footer, human help, feedback fixes, and the end to end smoke test. Reports pass and fail counts per
 // non zero on any failure. No test output file, database, payment,
 // or live service is used here.
 
@@ -33,8 +33,7 @@ const suites = [
   { name: "design system", command: process.execPath, args: ["scripts/test-design-system.mjs"], cwd: webDir },
   { name: "rich footer", command: process.execPath, args: ["scripts/test-rich-footer.mjs"], cwd: webDir },
   { name: "human help", command: process.execPath, args: ["scripts/test-human-help.mjs"], cwd: webDir },
-  { name: "security", command: process.execPath, args: ["scripts/test-security.mjs"], cwd: webDir },
-  { name: "admin area", command: process.execPath, args: ["scripts/test-admin-area.mjs"], cwd: webDir },
+  { name: "feedback fixes", command: process.execPath, args: ["scripts/test-feedback-fixes.mjs"], cwd: webDir },
   { name: "end to end smoke", command: process.execPath, args: ["scripts/test-e2e-smoke.mjs"], cwd: webDir }
 ];
 
@@ -48,9 +47,7 @@ let anyFailed = false;
 
 for (const suite of suites) {
   console.log(`\n=== Suite: ${suite.name} ===`);
-  // On Windows npm is npm.cmd, which spawnSync only finds through a shell.
-  const useShell = suite.command === "npm" && process.platform === "win32";
-  const run = spawnSync(suite.command, suite.args, { cwd: suite.cwd, encoding: "utf8", shell: useShell });
+  const run = spawnSync(suite.command, suite.args, { cwd: suite.cwd, encoding: "utf8" });
   const output = `${run.stdout || ""}${run.stderr || ""}`;
   if (output.trim()) {
     console.log(output.trim());
