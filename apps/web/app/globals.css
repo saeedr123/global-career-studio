@@ -23,6 +23,12 @@
   --radius-card: 0.75rem;
   --radius-button: 0.5rem;
   --tap-target: 44px;
+  /* Motion, Increment 18. Subtle only, transform and opacity only. */
+  --motion-fast: 150ms;
+  --motion-base: 180ms;
+  --motion-rise: 500ms;
+  --motion-ease: ease-out;
+  --motion-lift: -2px;
 }
 
 body {
@@ -51,10 +57,25 @@ body {
     border: 1px solid transparent;
     cursor: pointer;
     text-decoration: none;
+    transition: background-color var(--motion-fast) var(--motion-ease),
+      color var(--motion-fast) var(--motion-ease),
+      box-shadow var(--motion-fast) var(--motion-ease),
+      transform var(--motion-fast) var(--motion-ease);
   }
   .btn-primary:hover {
     background: var(--color-navy);
     color: #ffffff;
+    box-shadow: 0 6px 16px rgba(15, 30, 58, 0.25);
+  }
+  .btn-primary:active {
+    transform: translateY(1px);
+    box-shadow: none;
+  }
+  .btn-primary:focus-visible,
+  .btn-secondary:focus-visible,
+  .btn-danger:focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
   }
   .btn-secondary {
     display: inline-flex;
@@ -69,9 +90,17 @@ body {
     border: 1px solid var(--color-border);
     cursor: pointer;
     text-decoration: none;
+    transition: border-color var(--motion-fast) var(--motion-ease),
+      box-shadow var(--motion-fast) var(--motion-ease),
+      transform var(--motion-fast) var(--motion-ease);
   }
   .btn-secondary:hover {
     border-color: var(--color-navy);
+    box-shadow: 0 4px 12px rgba(15, 30, 58, 0.12);
+  }
+  .btn-secondary:active {
+    transform: translateY(1px);
+    box-shadow: none;
   }
   .btn-danger {
     display: inline-flex;
@@ -86,15 +115,33 @@ body {
     border: 1px solid var(--color-danger-border);
     cursor: pointer;
     text-decoration: none;
+    transition: border-color var(--motion-fast) var(--motion-ease),
+      box-shadow var(--motion-fast) var(--motion-ease),
+      transform var(--motion-fast) var(--motion-ease);
   }
   .btn-danger:hover {
     border-color: var(--color-danger);
+    box-shadow: 0 4px 12px rgba(185, 28, 28, 0.14);
+  }
+  .btn-danger:active {
+    transform: translateY(1px);
+    box-shadow: none;
   }
   .card {
     background: var(--color-paper);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-card);
     padding: 1rem;
+    box-shadow: 0 1px 2px rgba(15, 30, 58, 0.04);
+    transition: transform var(--motion-base) var(--motion-ease),
+      box-shadow var(--motion-base) var(--motion-ease),
+      border-color var(--motion-base) var(--motion-ease);
+  }
+  .card:hover,
+  .card:focus-within {
+    transform: translateY(var(--motion-lift));
+    box-shadow: 0 10px 28px rgba(15, 30, 58, 0.14);
+    border-color: var(--color-gold);
   }
   .eyebrow {
     font-size: 0.875rem;
@@ -174,7 +221,12 @@ body {
     color: var(--color-ink);
   }
   .hero {
-    background: var(--color-navy);
+    background: radial-gradient(
+        48rem 26rem at 85% -10%,
+        rgba(217, 164, 65, 0.22),
+        rgba(217, 164, 65, 0) 60%
+      ),
+      var(--color-navy);
     color: #ffffff;
   }
   .hero-rule {
@@ -195,6 +247,7 @@ body {
     color: #ffffff;
     text-decoration: none;
     border-radius: var(--radius-button);
+    transition: background-color var(--motion-fast) var(--motion-ease);
   }
   .site-nav-link:hover {
     background: var(--color-navy-dark);
@@ -208,5 +261,43 @@ body {
     color: #ffffff;
     text-decoration: underline;
     text-underline-offset: 2px;
+  }
+}
+
+/* Subtle entrance motion, Increment 18. Transform and opacity only,
+   short ease-out curves, no JavaScript involved, so the page is
+   fully visible with JavaScript off and the animation always ends
+   at full opacity. Sections below the fold finish at full opacity
+   on load, so scrolling never finds hidden content. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.reveal {
+  animation: rise var(--motion-rise) var(--motion-ease) both;
+}
+.reveal-delay-1 {
+  animation-delay: 80ms;
+}
+.reveal-delay-2 {
+  animation-delay: 160ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal {
+    animation: none;
   }
 }
