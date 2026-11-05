@@ -25,9 +25,9 @@ import {
 
 // CV builder, Phase 2 increment 6: all 10 version 1 templates, with
 // a local account and master profile link.
-// Local draft only. No real server sign in, no payment, no AI, and
-// no database in this increment. Drafts live in browser localStorage
-// until Prisma validation passes and a real database is connected.
+// Drafts autosave in browser localStorage. With a server account,
+// Save to server stores a copy on the server when you press it.
+// No payment and no connected AI generation in this app yet.
 // Starting data is fictional and marked SAMPLE. User edits are draft
 // edits, never presented as verified real history. A document opened
 // from the dashboard is loaded here through gcs-open-document, and a
@@ -51,6 +51,7 @@ import {
   effectivePlan,
   isTemplateAllowed
 } from "../../lib/billing-core.mjs";
+import RequireAuth from "../components/RequireAuth";
 
 const DRAFT_KEY = "gcs-builder-draft";
 const VERSIONS_KEY = "gcs-builder-versions";
@@ -528,16 +529,17 @@ export default function BuilderPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <RequireAuth>
+      <p className="eyebrow">
         CV builder{serverSession ? ", signed in on the server" : ", local draft only"}
       </p>
-      <h1 className="mt-2 text-3xl font-bold text-navy">Build your CV</h1>
-      <p className="mt-3 text-slate-700">
+      <h1 className="page-title">Build your CV</h1>
+      <p className="mt-3 text-ink">
         {serverSession
           ? `Signed in on the server as ${serverSession.email}. Starting data is fictional and marked SAMPLE. Drafts autosave in this browser, and Save to server below stores a copy on the server only when you press it.`
           : "Local draft account. Starting data is fictional and marked SAMPLE. Drafts are saved in this browser only until you sign in on the server. No price, payment, AI feature, or verified history is claimed here."}
       </p>
-      <p className="mt-4 rounded border border-slate-300 bg-white p-4">
+      <p className="mt-4 card">
         Current local plan: {subscriptionPlan === "trial" ? `Trial, ends ${subscriptionTrialEnd || "date not set"}` : subscriptionPlan === "premium" ? "Premium, local only" : "Free, local only"}. Entitlements are local browser state only, until a real database and Stripe are connected. No checkout or payment is shown here.
         {!isTemplateAllowed(subscriptionPlan, settings.templateId) && !existingDocument && (
           <span className="mt-2 block"> This template is locked on the Free plan. It is a premium template. Choose a free template for a new document, or open the subscription page to check your local plan. A document you already created stays viewable here.</span>
@@ -546,24 +548,24 @@ export default function BuilderPage() {
           <span className="mt-2 block"> This document was opened from the dashboard, so it stays viewable and downloadable here, even if its template is locked for a new document.</span>
         )}
         {subscriptionPlan === "free" && (
-          <span className="mt-2 block"> DOCX export is a premium export on Free. Standard PDF export is included on Free. <a className="text-blue-700 underline" href="/subscription">Open the subscription page</a></span>
+          <span className="mt-2 block"> DOCX export is a premium export on Free. Standard PDF export is included on Free. <a className="brand-link" href="/subscription">Open the subscription page</a></span>
         )}
       </p>
       {missing.length > 0 && (
-        <p className="mt-4 rounded border border-amber-300 bg-amber-50 p-4">
+        <p className="mt-4 notice">
           Missing for a complete draft: {missing.join(", ")}. You can still
           edit and export, but check these fields before you use the document.
         </p>
       )}
       {message && (
-        <p className="mt-4 rounded border border-slate-300 bg-white p-4">{message}</p>
+        <p className="mt-4 card">{message}</p>
       )}
 
-      <section className="mt-6 grid grid-cols-1 gap-4 rounded border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="mt-6 grid grid-cols-1 gap-4 card sm:grid-cols-2 lg:grid-cols-4">
         <label className="block">
           <span className="text-sm font-semibold">Template</span>
           <select
-            className="mt-1 w-full rounded border border-slate-300 p-2"
+            className="mt-1 input-field"
             value={settings.templateId}
             onChange={(event) => setSettings({ ...settings, templateId: event.target.value })}
           >
@@ -571,13 +573,13 @@ export default function BuilderPage() {
               <option key={template.id} value={template.id}>{template.name}{isTemplateAllowed(subscriptionPlan, template.id) ? "" : " (Premium, locked on Free)"}</option>
             ))}
           </select>
-          <span className="mt-1 block text-sm text-slate-500">{selectedTemplate.description}</span>
-          <span className="block text-sm text-slate-500">{selectedTemplate.atsNote}</span>
+          <span className="mt-1 block text-sm text-muted">{selectedTemplate.description}</span>
+          <span className="block text-sm text-muted">{selectedTemplate.atsNote}</span>
         </label>
         <label className="block">
           <span className="text-sm font-semibold">Paper size</span>
           <select
-            className="mt-1 w-full rounded border border-slate-300 p-2"
+            className="mt-1 input-field"
             value={settings.paperSize}
             onChange={(event) => setSettings({ ...settings, paperSize: event.target.value })}
           >
@@ -592,14 +594,14 @@ export default function BuilderPage() {
             onChange={(event) => setSettings({ ...settings, includePhoto: event.target.checked })}
           />{" "}
           Include photo
-          <span className="block text-sm text-slate-500">{photoNote}</span>
+          <span className="block text-sm text-muted">{photoNote}</span>
         </label>
         <div>
           <p className="text-sm font-semibold">Draft status</p>
           <p className="mt-1 text-sm">{savedState}</p>
           <button
             type="button"
-            className="mt-2 rounded bg-navy px-3 py-2 text-sm text-white"
+            className="mt-2 btn-secondary"
             onClick={saveVersion}
           >
             Save version
@@ -607,7 +609,7 @@ export default function BuilderPage() {
           {serverSession && (
             <button
               type="button"
-              className="mt-2 ml-2 rounded bg-navy px-3 py-2 text-sm text-white"
+              className="mt-2 ml-2 btn-primary"
               onClick={saveToServer}
             >
               Save to server
@@ -616,9 +618,9 @@ export default function BuilderPage() {
         </div>
       </section>
 
-      <section className="mt-6 rounded border border-slate-200 bg-white p-4">
+      <section className="mt-6 card">
         <h2 className="font-semibold">Country pack and language, guidance only</h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted">
           Country packs are guidance only, not legal advice. No fee, deadline,
           visa rule, or legal requirement is stated in a pack. Applying a pack
           sets the template, paper size, and section order, and you can change
@@ -629,7 +631,7 @@ export default function BuilderPage() {
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <label className="block text-sm">Country pack
             <select
-              className="mt-1 w-full rounded border border-slate-300 p-2"
+              className="mt-1 input-field"
               value={countryPackId}
               onChange={(event) => setCountryPackId(event.target.value)}
             >
@@ -640,7 +642,7 @@ export default function BuilderPage() {
           </label>
           <label className="block text-sm">Language
             <select
-              className="mt-1 w-full rounded border border-slate-300 p-2"
+              className="mt-1 input-field"
               value={languageId}
               onChange={(event) => setLanguageId(event.target.value)}
             >
@@ -652,7 +654,7 @@ export default function BuilderPage() {
           <div>
             <button
               type="button"
-              className="mt-6 rounded bg-navy px-3 py-2 text-sm text-white"
+              className="mt-6 btn-primary"
               onClick={() => {
                 setSettings(applyCountryPack(settings, countryPackId, TEMPLATES));
                 setMessage(`Country pack applied: ${selectedCountryPack.name}. You can change the template, paper size, and section order below.`);
@@ -662,22 +664,22 @@ export default function BuilderPage() {
             </button>
           </div>
         </div>
-        <p className="mt-3 text-sm text-slate-700">Pack: {selectedCountryPack.name}. Recommended templates: {selectedCountryPack.recommendedTemplates.join(", ")}. Photo: {selectedCountryPack.photoGuidance}</p>
-        <p className="mt-1 text-sm text-slate-500">Source: {selectedCountryPack.sourceNote} Last reviewed in this project: {selectedCountryPack.lastVerified}. {selectedCountryPack.legalNote}</p>
-        <p className="mt-1 text-sm text-slate-500">Language: {languagePack.name}. {languagePack.translationNote} Chinese (Simplified) is not in this version. It stays behind its demand gate.</p>
-        <a className="mt-3 inline-block text-sm text-blue-700 underline" href="/onboarding">Open the onboarding wizard</a>
+        <p className="mt-3 text-sm text-ink">Pack: {selectedCountryPack.name}. Recommended templates: {selectedCountryPack.recommendedTemplates.join(", ")}. Photo: {selectedCountryPack.photoGuidance}</p>
+        <p className="mt-1 text-sm text-muted">Source: {selectedCountryPack.sourceNote} Last reviewed in this project: {selectedCountryPack.lastVerified}. {selectedCountryPack.legalNote}</p>
+        <p className="mt-1 text-sm text-muted">Language: {languagePack.name}. {languagePack.translationNote} Chinese (Simplified) is not in this version. It stays behind its demand gate.</p>
+        <a className="mt-3 inline-block text-sm brand-link" href="/onboarding">Open the onboarding wizard</a>
       </section>
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <button type="button" className="rounded bg-gold px-4 py-2 font-semibold text-navy" onClick={() => exportFile("pdf")}>
+        <button type="button" className="btn-primary" onClick={() => exportFile("pdf")}>
           Export PDF
         </button>
-        <button type="button" className="rounded bg-navy px-4 py-2 text-white" onClick={() => exportFile("docx")}>
+        <button type="button" className="btn-secondary" onClick={() => exportFile("docx")}>
           Export DOCX
         </button>
         <button
           type="button"
-          className="rounded border border-slate-300 px-4 py-2"
+          className="btn-secondary"
           onClick={() => {
             setProfile(createSampleProfile());
             setSettings(createDefaultSettings());
@@ -688,7 +690,7 @@ export default function BuilderPage() {
         </button>
         <button
           type="button"
-          className="rounded border border-slate-300 px-4 py-2"
+          className="btn-secondary"
           onClick={() => {
             if (!window.confirm("Save this draft over the master profile? This replaces the profile fields with the draft fields.")) {
               setMessage("Save back cancelled. The master profile was not changed.");
@@ -707,154 +709,154 @@ export default function BuilderPage() {
         >
           Save draft back to master profile, with confirmation
         </button>
-        <a className="rounded border border-slate-300 px-4 py-2" href="/profile">
+        <a className="btn-secondary" href="/profile">
           Edit master profile
         </a>
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
         <div>
-          <h2 className="text-xl font-bold text-navy">Edit</h2>
+          <h2 className="section-title">Edit</h2>
 
-          <section className="mt-4 rounded border border-slate-200 bg-white p-4">
+          <section className="mt-4 card">
             <h3 className="font-semibold">Personal details</h3>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block text-sm">Full name
-                <input className="mt-1 w-full rounded border border-slate-300 p-2" value={profile.fullName} onChange={(e) => updateProfile({ fullName: e.target.value })} />
+                <input className="mt-1 input-field" value={profile.fullName} onChange={(e) => updateProfile({ fullName: e.target.value })} />
               </label>
               <label className="block text-sm">Headline
-                <input className="mt-1 w-full rounded border border-slate-300 p-2" value={profile.headline} onChange={(e) => updateProfile({ headline: e.target.value })} />
+                <input className="mt-1 input-field" value={profile.headline} onChange={(e) => updateProfile({ headline: e.target.value })} />
               </label>
               <label className="block text-sm">Email
-                <input className="mt-1 w-full rounded border border-slate-300 p-2" value={profile.email} onChange={(e) => updateProfile({ email: e.target.value })} />
+                <input className="mt-1 input-field" value={profile.email} onChange={(e) => updateProfile({ email: e.target.value })} />
               </label>
               <label className="block text-sm">Phone
-                <input className="mt-1 w-full rounded border border-slate-300 p-2" value={profile.phone} onChange={(e) => updateProfile({ phone: e.target.value })} />
+                <input className="mt-1 input-field" value={profile.phone} onChange={(e) => updateProfile({ phone: e.target.value })} />
               </label>
               <label className="block text-sm sm:col-span-2">City
-                <input className="mt-1 w-full rounded border border-slate-300 p-2" value={profile.city} onChange={(e) => updateProfile({ city: e.target.value })} />
+                <input className="mt-1 input-field" value={profile.city} onChange={(e) => updateProfile({ city: e.target.value })} />
               </label>
             </div>
             <label className="mt-3 block text-sm">Summary
-              <textarea className="mt-1 w-full rounded border border-slate-300 p-2" rows={4} value={profile.summary} onChange={(e) => updateProfile({ summary: e.target.value })} />
+              <textarea className="mt-1 input-field" rows={4} value={profile.summary} onChange={(e) => updateProfile({ summary: e.target.value })} />
             </label>
           </section>
 
-          <section className="mt-4 rounded border border-slate-200 bg-white p-4">
+          <section className="mt-4 card">
             <h3 className="font-semibold">Experience</h3>
             {profile.experience.map((entry: any, index: number) => (
-              <div key={index} className="mt-3 rounded border border-slate-100 p-3">
+              <div key={index} className="mt-3 card">
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <input className="rounded border border-slate-300 p-2" aria-label="Employer" value={entry.employer} onChange={(e) => { const next = clone(profile.experience); next[index].employer = e.target.value; updateProfile({ experience: next }); }} />
-                  <input className="rounded border border-slate-300 p-2" aria-label="Job title" value={entry.jobTitle} onChange={(e) => { const next = clone(profile.experience); next[index].jobTitle = e.target.value; updateProfile({ experience: next }); }} />
-                  <input className="rounded border border-slate-300 p-2" aria-label="Location" value={entry.location} onChange={(e) => { const next = clone(profile.experience); next[index].location = e.target.value; updateProfile({ experience: next }); }} />
-                  <input className="rounded border border-slate-300 p-2" aria-label="Period" value={entry.period} onChange={(e) => { const next = clone(profile.experience); next[index].period = e.target.value; updateProfile({ experience: next }); }} />
+                  <input className="input-field" aria-label="Employer" value={entry.employer} onChange={(e) => { const next = clone(profile.experience); next[index].employer = e.target.value; updateProfile({ experience: next }); }} />
+                  <input className="input-field" aria-label="Job title" value={entry.jobTitle} onChange={(e) => { const next = clone(profile.experience); next[index].jobTitle = e.target.value; updateProfile({ experience: next }); }} />
+                  <input className="input-field" aria-label="Location" value={entry.location} onChange={(e) => { const next = clone(profile.experience); next[index].location = e.target.value; updateProfile({ experience: next }); }} />
+                  <input className="input-field" aria-label="Period" value={entry.period} onChange={(e) => { const next = clone(profile.experience); next[index].period = e.target.value; updateProfile({ experience: next }); }} />
                 </div>
-                <textarea className="mt-2 w-full rounded border border-slate-300 p-2" rows={3} aria-label="Bullets, one per line" value={(entry.bullets || []).join("\n")} onChange={(e) => { const next = clone(profile.experience); next[index].bullets = e.target.value.split("\n").map((line: string) => line.trim()).filter(Boolean); updateProfile({ experience: next }); }} />
-                <button type="button" className="mt-2 text-sm text-red-700" onClick={() => updateProfile({ experience: profile.experience.filter((_: any, i: number) => i !== index) })}>Remove this job</button>
+                <textarea className="mt-2 input-field" rows={3} aria-label="Bullets, one per line" value={(entry.bullets || []).join("\n")} onChange={(e) => { const next = clone(profile.experience); next[index].bullets = e.target.value.split("\n").map((line: string) => line.trim()).filter(Boolean); updateProfile({ experience: next }); }} />
+                <button type="button" className="mt-2 text-sm link-danger" onClick={() => updateProfile({ experience: profile.experience.filter((_: any, i: number) => i !== index) })}>Remove this job</button>
               </div>
             ))}
-            <button type="button" className="mt-3 rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => updateProfile({ experience: [...profile.experience, { employer: "", jobTitle: "", location: "", period: "", bullets: [] }] })}>Add job</button>
+            <button type="button" className="mt-3 btn-secondary" onClick={() => updateProfile({ experience: [...profile.experience, { employer: "", jobTitle: "", location: "", period: "", bullets: [] }] })}>Add job</button>
           </section>
 
-          <section className="mt-4 rounded border border-slate-200 bg-white p-4">
+          <section className="mt-4 card">
             <h3 className="font-semibold">Education, skills, languages</h3>
             {profile.education.map((entry: any, index: number) => (
               <div key={index} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <input className="rounded border border-slate-300 p-2" aria-label="Qualification" value={entry.qualification} onChange={(e) => { const next = clone(profile.education); next[index].qualification = e.target.value; updateProfile({ education: next }); }} />
-                <input className="rounded border border-slate-300 p-2" aria-label="Institution" value={entry.institution} onChange={(e) => { const next = clone(profile.education); next[index].institution = e.target.value; updateProfile({ education: next }); }} />
-                <input className="rounded border border-slate-300 p-2" aria-label="Period" value={entry.period} onChange={(e) => { const next = clone(profile.education); next[index].period = e.target.value; updateProfile({ education: next }); }} />
+                <input className="input-field" aria-label="Qualification" value={entry.qualification} onChange={(e) => { const next = clone(profile.education); next[index].qualification = e.target.value; updateProfile({ education: next }); }} />
+                <input className="input-field" aria-label="Institution" value={entry.institution} onChange={(e) => { const next = clone(profile.education); next[index].institution = e.target.value; updateProfile({ education: next }); }} />
+                <input className="input-field" aria-label="Period" value={entry.period} onChange={(e) => { const next = clone(profile.education); next[index].period = e.target.value; updateProfile({ education: next }); }} />
               </div>
             ))}
-            <button type="button" className="mt-3 rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => updateProfile({ education: [...profile.education, { institution: "", qualification: "", period: "" }] })}>Add education</button>
+            <button type="button" className="mt-3 btn-secondary" onClick={() => updateProfile({ education: [...profile.education, { institution: "", qualification: "", period: "" }] })}>Add education</button>
             <label className="mt-4 block text-sm">Skills, comma separated
-              <input className="mt-1 w-full rounded border border-slate-300 p-2" value={profile.skills.join(", ")} onChange={(e) => updateProfile({ skills: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) })} />
+              <input className="mt-1 input-field" value={profile.skills.join(", ")} onChange={(e) => updateProfile({ skills: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) })} />
             </label>
             <label className="mt-3 block text-sm">Languages, comma separated
-              <input className="mt-1 w-full rounded border border-slate-300 p-2" value={profile.languages.join(", ")} onChange={(e) => updateProfile({ languages: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) })} />
+              <input className="mt-1 input-field" value={profile.languages.join(", ")} onChange={(e) => updateProfile({ languages: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) })} />
             </label>
           </section>
 
-          <section className="mt-4 rounded border border-slate-200 bg-white p-4">
+          <section className="mt-4 card">
             <h3 className="font-semibold">Section order, move up or down</h3>
-            <p className="mt-1 text-sm text-slate-500">Buttons work on phones too. Drag and drop is not required.</p>
+            <p className="mt-1 text-sm text-muted">Buttons work on phones too. Drag and drop is not required.</p>
             <ul className="mt-3 space-y-2">
               {order.map((key: string) => (
-                <li key={key} className="flex items-center justify-between rounded border border-slate-100 px-3 py-2">
+                <li key={key} className="flex items-center justify-between btn-secondary">
                   <span>{displayTitle(key, sectionTitle(profile, key))}</span>
                   <span className="flex gap-2">
-                    <button type="button" className="rounded border border-slate-300 px-2 py-1 text-sm" onClick={() => setSettings({ ...settings, sectionOrder: moveSection(order, key, "up") })}>Move up</button>
-                    <button type="button" className="rounded border border-slate-300 px-2 py-1 text-sm" onClick={() => setSettings({ ...settings, sectionOrder: moveSection(order, key, "down") })}>Move down</button>
+                    <button type="button" className="btn-secondary" onClick={() => setSettings({ ...settings, sectionOrder: moveSection(order, key, "up") })}>Move up</button>
+                    <button type="button" className="btn-secondary" onClick={() => setSettings({ ...settings, sectionOrder: moveSection(order, key, "down") })}>Move down</button>
                     {key.startsWith("custom-") && (
-                      <button type="button" className="rounded border border-slate-300 px-2 py-1 text-sm text-red-700" onClick={() => { const nextProfile = removeCustomSection(profile, key); setProfile(nextProfile); setSettings({ ...settings, sectionOrder: sectionOrderFor(nextProfile, order.filter((item: string) => item !== key)) }); }}>Remove</button>
+                      <button type="button" className="btn-secondary link-danger" onClick={() => { const nextProfile = removeCustomSection(profile, key); setProfile(nextProfile); setSettings({ ...settings, sectionOrder: sectionOrderFor(nextProfile, order.filter((item: string) => item !== key)) }); }}>Remove</button>
                     )}
                   </span>
                 </li>
               ))}
             </ul>
             <h4 className="mt-4 font-semibold">Add a custom section</h4>
-            <input className="mt-2 w-full rounded border border-slate-300 p-2" placeholder="Custom section title" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} />
-            <textarea className="mt-2 w-full rounded border border-slate-300 p-2" rows={3} placeholder="One line per line" value={customText} onChange={(e) => setCustomText(e.target.value)} />
-            <button type="button" className="mt-2 rounded bg-navy px-3 py-2 text-sm text-white" onClick={() => { const next = addCustomSection(profile, customTitle, customText); setProfile(next); setSettings({ ...settings, sectionOrder: sectionOrderFor(next, order) }); setCustomTitle(""); setCustomText(""); }}>Add custom section</button>
+            <input className="mt-2 input-field" placeholder="Custom section title" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} />
+            <textarea className="mt-2 input-field" rows={3} placeholder="One line per line" value={customText} onChange={(e) => setCustomText(e.target.value)} />
+            <button type="button" className="mt-2 btn-secondary" onClick={() => { const next = addCustomSection(profile, customTitle, customText); setProfile(next); setSettings({ ...settings, sectionOrder: sectionOrderFor(next, order) }); setCustomTitle(""); setCustomText(""); }}>Add custom section</button>
           </section>
 
-          <section className="mt-4 rounded border border-slate-200 bg-white p-4">
+          <section className="mt-4 card">
             <h3 className="font-semibold">Version history, local drafts only</h3>
-            {versions.length === 0 && <p className="mt-2 text-sm text-slate-500">No saved versions yet. Use Save version above.</p>}
+            {versions.length === 0 && <p className="mt-2 text-sm text-muted">No saved versions yet. Use Save version above.</p>}
             <ul className="mt-2 space-y-2">
               {versions.map((version: any, index: number) => (
-                <li key={index} className="flex items-center justify-between rounded border border-slate-100 px-3 py-2 text-sm">
+                <li key={index} className="flex items-center justify-between btn-secondary">
                   <span>{version.label}, saved {version.savedAt}</span>
-                  <button type="button" className="rounded border border-slate-300 px-2 py-1" onClick={() => restoreVersion(index)}>Restore</button>
+                  <button type="button" className="btn-secondary" onClick={() => restoreVersion(index)}>Restore</button>
                 </li>
               ))}
             </ul>
           </section>
 
-          <section className="mt-4 rounded border border-slate-200 bg-white p-4">
+          <section className="mt-4 card">
             <h3 className="font-semibold">Import, guided paste with correction</h3>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-muted">
               The working path is pasted structured text, or a plain text file.
               PDF and DOCX file import is in the section below, also with a
               correction step. LinkedIn export import is in the section
               below, also with a correction step. Nothing is imported
               until you check and correct it below.
             </p>
-            <textarea className="mt-3 w-full rounded border border-slate-300 p-2 font-mono text-sm" rows={10} value={importText} onChange={(e) => setImportText(e.target.value)} />
+            <textarea className="mt-3 w-full input-field font-mono text-sm" rows={10} value={importText} onChange={(e) => setImportText(e.target.value)} />
             <div className="mt-2 flex flex-wrap gap-2">
-              <label className="rounded border border-slate-300 px-3 py-2 text-sm">Upload plain text file
+              <label className="btn-secondary">Upload plain text file
                 <input type="file" accept=".txt,text/plain" className="ml-2" onChange={(e) => handleImportFile(e.target.files?.[0])} />
               </label>
-              <button type="button" className="rounded bg-navy px-3 py-2 text-sm text-white" onClick={runImport}>Parse import</button>
+              <button type="button" className="btn-primary" onClick={runImport}>Parse import</button>
             </div>
             {parsed && (
-              <div className="mt-4 rounded border border-amber-300 bg-amber-50 p-3">
+              <div className="mt-4 notice">
                 <p className="font-semibold">Check and correct this import before use</p>
                 {parsed.warnings.length > 0 && <p className="mt-1 text-sm">Notes: {parsed.warnings.join(" ")}</p>}
                 {parsed.unparsedLines.length > 0 && <p className="mt-1 text-sm">Unparsed lines, not imported: {parsed.unparsedLines.join(" | ")}</p>}
                 <label className="mt-3 block text-sm">Name
-                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={parsed.profile.fullName} onChange={(e) => setParsed({ ...parsed, profile: { ...parsed.profile, fullName: e.target.value } })} />
+                  <input className="mt-1 input-field" value={parsed.profile.fullName} onChange={(e) => setParsed({ ...parsed, profile: { ...parsed.profile, fullName: e.target.value } })} />
                 </label>
                 <label className="mt-2 block text-sm">Headline
-                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={parsed.profile.headline} onChange={(e) => setParsed({ ...parsed, profile: { ...parsed.profile, headline: e.target.value } })} />
+                  <input className="mt-1 input-field" value={parsed.profile.headline} onChange={(e) => setParsed({ ...parsed, profile: { ...parsed.profile, headline: e.target.value } })} />
                 </label>
                 <label className="mt-2 block text-sm">Summary
-                  <textarea className="mt-1 w-full rounded border border-slate-300 bg-white p-2" rows={3} value={parsed.profile.summary} onChange={(e) => setParsed({ ...parsed, profile: { ...parsed.profile, summary: e.target.value } })} />
+                  <textarea className="mt-1 input-field" rows={3} value={parsed.profile.summary} onChange={(e) => setParsed({ ...parsed, profile: { ...parsed.profile, summary: e.target.value } })} />
                 </label>
                 <label className="mt-2 block text-sm">Skills, comma separated
-                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={parsed.profile.skills.join(", ")} onChange={(e) => setParsed({ ...parsed, profile: { ...parsed.profile, skills: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) } })} />
+                  <input className="mt-1 input-field" value={parsed.profile.skills.join(", ")} onChange={(e) => setParsed({ ...parsed, profile: { ...parsed.profile, skills: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) } })} />
                 </label>
                 <div className="mt-3 flex gap-2">
-                  <button type="button" className="rounded bg-navy px-3 py-2 text-sm text-white" onClick={useImport}>Use this import as a draft</button>
-                  <button type="button" className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => setParsed(null)}>Discard import</button>
+                  <button type="button" className="btn-primary" onClick={useImport}>Use this import as a draft</button>
+                  <button type="button" className="btn-secondary" onClick={() => setParsed(null)}>Discard import</button>
                 </div>
               </div>
             )}
           </section>
 
-          <section className="mt-4 rounded border border-slate-200 bg-white p-4">
+          <section className="mt-4 card">
             <h3 className="font-semibold">Import PDF or DOCX, with correction</h3>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-muted">
               Upload a PDF or DOCX file, up to 5 MB. Its text is parsed into
               profile fields, and unparsed lines are shown, never silently
               dropped. If the file has no readable text, for example a
@@ -862,44 +864,44 @@ export default function BuilderPage() {
               invented. Only after you check and correct the fields below
               does the import become a draft.
             </p>
-            <label className="mt-3 block rounded border border-slate-300 px-3 py-2 text-sm">Upload PDF or DOCX file
+            <label className="mt-3 block btn-secondary">Upload PDF or DOCX file
               <input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="ml-2" onChange={(e) => handleFileImport(e.target.files?.[0])} />
             </label>
             {fileStatus && <p className="mt-2 text-sm">{fileStatus}</p>}
             {fileParsed && !fileParsed.empty && (
-              <div className="mt-4 rounded border border-amber-300 bg-amber-50 p-3">
+              <div className="mt-4 notice">
                 <p className="font-semibold">Check and correct this file import before use</p>
                 <p className="mt-1 text-sm">File: {fileParsed.fileName}, format: {fileParsed.format}{fileParsed.pageCount ? `, pages: ${fileParsed.pageCount}` : ""}</p>
                 {fileParsed.warnings.length > 0 && <p className="mt-1 text-sm">Notes: {fileParsed.warnings.join(" ")}</p>}
                 {fileParsed.unparsedLines.length > 0 && <p className="mt-1 text-sm">Unparsed lines, not imported: {fileParsed.unparsedLines.join(" | ")}</p>}
                 <label className="mt-3 block text-sm">Name
-                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={fileParsed.profile.fullName} onChange={(e) => setFileParsed({ ...fileParsed, profile: { ...fileParsed.profile, fullName: e.target.value } })} />
+                  <input className="mt-1 input-field" value={fileParsed.profile.fullName} onChange={(e) => setFileParsed({ ...fileParsed, profile: { ...fileParsed.profile, fullName: e.target.value } })} />
                 </label>
                 <label className="mt-2 block text-sm">Headline
-                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={fileParsed.profile.headline} onChange={(e) => setFileParsed({ ...fileParsed, profile: { ...fileParsed.profile, headline: e.target.value } })} />
+                  <input className="mt-1 input-field" value={fileParsed.profile.headline} onChange={(e) => setFileParsed({ ...fileParsed, profile: { ...fileParsed.profile, headline: e.target.value } })} />
                 </label>
                 <label className="mt-2 block text-sm">Summary
-                  <textarea className="mt-1 w-full rounded border border-slate-300 bg-white p-2" rows={3} value={fileParsed.profile.summary} onChange={(e) => setFileParsed({ ...fileParsed, profile: { ...fileParsed.profile, summary: e.target.value } })} />
+                  <textarea className="mt-1 input-field" rows={3} value={fileParsed.profile.summary} onChange={(e) => setFileParsed({ ...fileParsed, profile: { ...fileParsed.profile, summary: e.target.value } })} />
                 </label>
                 <label className="mt-2 block text-sm">Skills, comma separated
-                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={fileParsed.profile.skills.join(", ")} onChange={(e) => setFileParsed({ ...fileParsed, profile: { ...fileParsed.profile, skills: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) } })} />
+                  <input className="mt-1 input-field" value={fileParsed.profile.skills.join(", ")} onChange={(e) => setFileParsed({ ...fileParsed, profile: { ...fileParsed.profile, skills: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) } })} />
                 </label>
                 <div className="mt-3 flex gap-2">
-                  <button type="button" className="rounded bg-navy px-3 py-2 text-sm text-white" onClick={useFileImport}>Use this import as a draft</button>
-                  <button type="button" className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => setFileParsed(null)}>Discard import</button>
+                  <button type="button" className="btn-primary" onClick={useFileImport}>Use this import as a draft</button>
+                  <button type="button" className="btn-secondary" onClick={() => setFileParsed(null)}>Discard import</button>
                 </div>
               </div>
             )}
           </section>
 
-          <section className="mt-4 rounded border border-slate-200 bg-white p-4">
+          <section className="mt-4 card">
             <h3 className="font-semibold">Import LinkedIn export, with correction</h3>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-muted">
               Official data export import only. Studio does not contact
               LinkedIn, does not scrape LinkedIn, and does not use an
               unofficial API. LinkedIn API import is not built.
             </p>
-            <p className="mt-2 text-sm text-slate-700">
+            <p className="mt-2 text-sm text-ink">
               How to get your export: on LinkedIn on desktop, open Settings
               and Privacy, then Data Privacy, then Get a copy of your data,
               pick at least Profile, Positions, Education, Skills,
@@ -908,7 +910,7 @@ export default function BuilderPage() {
               one by one, or upload the ZIP file and Studio will read the
               CSV files inside it. Each file must be 5 MB or smaller.
             </p>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-muted">
               Note: the export contains your own data. The profile photo is
               not in the export, so no photo is imported. Dates in Month
               YYYY form are kept as written for correction. An empty
@@ -918,43 +920,43 @@ export default function BuilderPage() {
               check and correct the fields below does the import become a
               draft.
             </p>
-            <label className="mt-3 block rounded border border-slate-300 px-3 py-2 text-sm">Upload LinkedIn export CSV files or ZIP file
+            <label className="mt-3 block btn-secondary">Upload LinkedIn export CSV files or ZIP file
               <input type="file" accept=".csv,.zip,text/csv,application/zip" multiple className="ml-2" onChange={(e) => handleLinkedInImport(e.target.files)} />
             </label>
             {linkedinStatus && <p className="mt-2 text-sm">{linkedinStatus}</p>}
             {linkedinParsed && !linkedinParsed.empty && (
-              <div className="mt-4 rounded border border-amber-300 bg-amber-50 p-3">
+              <div className="mt-4 notice">
                 <p className="font-semibold">Check and correct this LinkedIn export before use</p>
                 <p className="mt-1 text-sm">Files used: {linkedinParsed.filesParsed.join(", ") || "none"}</p>
                 {linkedinParsed.filesMissing.length > 0 && <p className="mt-1 text-sm">Files not supplied: {linkedinParsed.filesMissing.join(", ")}</p>}
                 {linkedinParsed.warnings.length > 0 && <p className="mt-1 text-sm">Notes: {linkedinParsed.warnings.join(" ")}</p>}
                 {linkedinParsed.unparsedLines.length > 0 && <p className="mt-1 text-sm">Unparsed items, not imported: {linkedinParsed.unparsedLines.join(" | ")}</p>}
                 <label className="mt-3 block text-sm">Name
-                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={linkedinParsed.profile.fullName} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, fullName: e.target.value } })} />
+                  <input className="mt-1 input-field" value={linkedinParsed.profile.fullName} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, fullName: e.target.value } })} />
                 </label>
                 <label className="mt-2 block text-sm">Headline
-                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={linkedinParsed.profile.headline} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, headline: e.target.value } })} />
+                  <input className="mt-1 input-field" value={linkedinParsed.profile.headline} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, headline: e.target.value } })} />
                 </label>
                 <label className="mt-2 block text-sm">Summary
-                  <textarea className="mt-1 w-full rounded border border-slate-300 bg-white p-2" rows={3} value={linkedinParsed.profile.summary} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, summary: e.target.value } })} />
+                  <textarea className="mt-1 input-field" rows={3} value={linkedinParsed.profile.summary} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, summary: e.target.value } })} />
                 </label>
                 <label className="mt-2 block text-sm">Skills, comma separated
-                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={linkedinParsed.profile.skills.join(", ")} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, skills: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) } })} />
+                  <input className="mt-1 input-field" value={linkedinParsed.profile.skills.join(", ")} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, skills: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) } })} />
                 </label>
                 <label className="mt-2 block text-sm">Languages, comma separated
-                  <input className="mt-1 w-full rounded border border-slate-300 bg-white p-2" value={linkedinParsed.profile.languages.join(", ")} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, languages: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) } })} />
+                  <input className="mt-1 input-field" value={linkedinParsed.profile.languages.join(", ")} onChange={(e) => setLinkedinParsed({ ...linkedinParsed, profile: { ...linkedinParsed.profile, languages: e.target.value.split(",").map((item: string) => item.trim()).filter(Boolean) } })} />
                 </label>
                 <div className="mt-3 flex gap-2">
-                  <button type="button" className="rounded bg-navy px-3 py-2 text-sm text-white" onClick={useLinkedInImport}>Use this LinkedIn import as a draft</button>
-                  <button type="button" className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={() => setLinkedinParsed(null)}>Discard import</button>
+                  <button type="button" className="btn-primary" onClick={useLinkedInImport}>Use this LinkedIn import as a draft</button>
+                  <button type="button" className="btn-secondary" onClick={() => setLinkedinParsed(null)}>Discard import</button>
                 </div>
               </div>
             )}
           </section>
 
-          <section className="mt-4 rounded border border-slate-200 bg-white p-4">
+          <section className="mt-4 card">
             <h3 className="font-semibold">Job specific versions, local drafts only</h3>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-muted">
               Create a named copy of the master draft for one job. Editing a
               job version does not change the master draft, and editing the
               master does not change a saved version, unless you save a
@@ -962,7 +964,7 @@ export default function BuilderPage() {
               you, never invented.
             </p>
             {activeJobVersionId && (
-              <p className="mt-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm">
+              <p className="mt-2 notice">
                 Editing a job version now. Use Save back to job version to keep
                 this edit in that version, or Return to master draft to edit
                 the master instead.
@@ -970,39 +972,39 @@ export default function BuilderPage() {
             )}
             <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <label className="block text-sm">Job title
-                <input className="mt-1 w-full rounded border border-slate-300 p-2" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
+                <input className="mt-1 input-field" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
               </label>
               <label className="block text-sm">Company
-                <input className="mt-1 w-full rounded border border-slate-300 p-2" value={jobCompany} onChange={(e) => setJobCompany(e.target.value)} />
+                <input className="mt-1 input-field" value={jobCompany} onChange={(e) => setJobCompany(e.target.value)} />
               </label>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" className="rounded bg-navy px-3 py-2 text-sm text-white" onClick={createJobVersionFromMaster}>Create job version from master draft</button>
+              <button type="button" className="btn-primary" onClick={createJobVersionFromMaster}>Create job version from master draft</button>
               {activeJobVersionId && (
                 <>
-                  <button type="button" className="rounded bg-gold px-3 py-2 text-sm font-semibold text-navy" onClick={saveJobVersionBack}>Save back to job version</button>
-                  <button type="button" className="rounded border border-slate-300 px-3 py-2 text-sm" onClick={saveVersionToMaster}>Return to master draft</button>
+                  <button type="button" className="btn-primary" onClick={saveJobVersionBack}>Save back to job version</button>
+                  <button type="button" className="btn-secondary" onClick={saveVersionToMaster}>Return to master draft</button>
                 </>
               )}
             </div>
-            {jobVersions.length === 0 && <p className="mt-3 text-sm text-slate-500">No job versions yet.</p>}
+            {jobVersions.length === 0 && <p className="mt-3 text-sm text-muted">No job versions yet.</p>}
             <ul className="mt-3 space-y-2">
               {jobVersions.map((version: any) => (
-                <li key={version.id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-100 px-3 py-2 text-sm">
+                <li key={version.id} className="flex flex-wrap items-center justify-between gap-2 btn-secondary">
                   <span>{version.label}, created {version.createdAt}</span>
                   <span className="flex flex-wrap gap-2">
-                    <button type="button" className="rounded border border-slate-300 px-2 py-1" onClick={() => loadJobVersion(version.id)}>Edit version</button>
-                    <button type="button" className="rounded border border-slate-300 px-2 py-1" onClick={() => exportJobVersion(version, "pdf")}>Export PDF</button>
-                    <button type="button" className="rounded border border-slate-300 px-2 py-1" onClick={() => exportJobVersion(version, "docx")}>Export DOCX</button>
+                    <button type="button" className="btn-secondary" onClick={() => loadJobVersion(version.id)}>Edit version</button>
+                    <button type="button" className="btn-secondary" onClick={() => exportJobVersion(version, "pdf")}>Export PDF</button>
+                    <button type="button" className="btn-secondary" onClick={() => exportJobVersion(version, "docx")}>Export DOCX</button>
                   </span>
                 </li>
               ))}
             </ul>
             <h4 className="mt-4 font-semibold">Compare two versions, structure only</h4>
-            <p className="mt-1 text-sm text-slate-500">This compares template, paper size, photo, section order, and field counts. It does not claim a quality score.</p>
+            <p className="mt-1 text-sm text-muted">This compares template, paper size, photo, section order, and field counts. It does not claim a quality score.</p>
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <label className="block text-sm">First
-                <select className="mt-1 w-full rounded border border-slate-300 p-2" value={compareFirst} onChange={(e) => setCompareFirst(e.target.value)}>
+                <select className="mt-1 input-field" value={compareFirst} onChange={(e) => setCompareFirst(e.target.value)}>
                   <option value="master">Master draft</option>
                   {jobVersions.map((version: any) => (
                     <option key={version.id} value={version.id}>{version.label}</option>
@@ -1010,7 +1012,7 @@ export default function BuilderPage() {
                 </select>
               </label>
               <label className="block text-sm">Second
-                <select className="mt-1 w-full rounded border border-slate-300 p-2" value={compareSecond} onChange={(e) => setCompareSecond(e.target.value)}>
+                <select className="mt-1 input-field" value={compareSecond} onChange={(e) => setCompareSecond(e.target.value)}>
                   <option value="">Choose a version</option>
                   <option value="master">Master draft</option>
                   {jobVersions.map((version: any) => (
@@ -1019,9 +1021,9 @@ export default function BuilderPage() {
                 </select>
               </label>
             </div>
-            <button type="button" className="mt-2 rounded bg-navy px-3 py-2 text-sm text-white" onClick={runCompare}>Compare versions</button>
+            <button type="button" className="mt-2 btn-primary" onClick={runCompare}>Compare versions</button>
             {compareResult && (
-              <div className="mt-3 rounded border border-slate-200 p-3 text-sm">
+              <div className="mt-3 rounded border border-border p-3 text-sm">
                 <p className="font-semibold">{compareResult.firstLabel} compared with {compareResult.secondLabel}</p>
                 {compareResult.same ? (
                   <p className="mt-1">No structural differences were found.</p>
@@ -1039,11 +1041,11 @@ export default function BuilderPage() {
 
         <div>
           <h2 className="text-xl font-bold text-navy">Live preview, structure only</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-muted">
             This preview shows section order and content. The PDF and DOCX
             exports use the real template engine and may paginate differently.
           </p>
-          <article className="mt-4 rounded border border-slate-200 bg-white p-6">
+          <article className="mt-4 rounded border border-border bg-paper p-6">
             {isBand ? (
               <header className="rounded bg-navy p-4 text-white">
                 <h3 className="text-2xl font-bold">{profile.fullName}</h3>
@@ -1060,14 +1062,14 @@ export default function BuilderPage() {
                 <p>{profile.headline}</p>
               </header>
             )}
-            <p className="mt-3 text-sm text-slate-600">
+            <p className="mt-3 text-sm text-muted">
               SAMPLE: {profile.email} | {profile.phone} | {profile.city}
               {photoIncluded(settings.templateId, settings.includePhoto) ? " | [SAMPLE photo placeholder]" : ""}
             </p>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-muted">
               Template: {selectedTemplate.name}, paper: {settings.paperSize === "US_LETTER" ? "US Letter" : "A4"}
             </p>
-            <p className="mt-1 text-sm text-slate-500">{selectedTemplate.atsNote}</p>
+            <p className="mt-1 text-sm text-muted">{selectedTemplate.atsNote}</p>
             {isTwoColumnPreview ? (
               <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-3">
                 <div className={settings.templateId === "sidebar" ? "sm:order-1" : "sm:order-2"}>
@@ -1119,6 +1121,7 @@ export default function BuilderPage() {
           </article>
         </div>
       </div>
+      </RequireAuth>
     </main>
   );
 }
