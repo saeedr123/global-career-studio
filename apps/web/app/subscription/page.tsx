@@ -89,16 +89,16 @@ export default function SubscriptionPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <RequireAuth>
-      <p className="eyebrow">Subscription, placeholder billing only, local only</p>
+      <p className="eyebrow">Subscription</p>
       <h1 className="page-title">Subscription</h1>
       <p className="mt-3 text-ink">
-        This page shows a local plan only. No checkout, no payment form, and no Stripe integration is working here. No payment is taken in this app.
+        This page shows your plan only. No checkout, no payment form, and no Stripe integration is working here. No payment is taken in this app.
       </p>
       <p className="mt-3 notice text-ink">{BILLING_NOT_FINAL_NOTE} {PRICE_NOTE}</p>
 
       <section className="mt-6 card">
         <h2 className="font-semibold">Current plan</h2>
-        <p className="mt-2 text-ink">Plan: {currentPlanId === "trial" ? "Trial" : currentPlanId === "premium" ? "Premium, local only" : "Free"}</p>
+        <p className="mt-2 text-ink">Plan: {currentPlanId === "trial" ? "Trial" : currentPlanId === "premium" ? "Premium" : "Free"}</p>
         <p className="mt-1 text-ink">Price: {formatPrice(entitlements)} {entitlements.currency ? entitlements.currency : ""}</p>
         {state.plan === "trial" && (
           <div className="mt-2 text-ink">
@@ -112,7 +112,7 @@ export default function SubscriptionPage() {
         {state.plan === "premium" && state.cancelled && (
           <p className="mt-2 text-ink">Local premium flag cancelled. Access until: {state.accessUntil || "end of the current period, not set locally"}. No charge was made and no payment provider was contacted.</p>
         )}
-        <p className="mt-2 text-ink">Trials used on this local account: {state.trialCount || 0} of {TRIAL_CONFIG.perAccountLimit}. Trial length: {TRIAL_CONFIG.lengthDays} days. Card required for trial: {TRIAL_CONFIG.cardRequired ? "Yes" : "No"}.</p>
+        <p className="mt-2 text-ink">Trials used on this account: {state.trialCount || 0} of {TRIAL_CONFIG.perAccountLimit}. Trial length: {TRIAL_CONFIG.lengthDays} days. Card required for trial: {TRIAL_CONFIG.cardRequired ? "Yes" : "No"}.</p>
       </section>
 
       <section className="mt-6 card">
