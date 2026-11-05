@@ -252,12 +252,16 @@ check("changed files contain no em dash or en dash", () => {
   assert.deepStrictEqual(bad, [], `em or en dash in: ${bad.join(", ")}`);
 });
 
-check("public header nav shows public things only, never app pages or admin", () => {
+check("public header nav shows public things only, and Admin only to admins", () => {
   const headerCopy = stripComments(header);
-  for (const href of ["/builder", "/profile", "/writer", "/letters", "/ats", "/onboarding", "/subscription", "/admin"]) {
+  for (const href of ["/builder", "/profile", "/writer", "/letters", "/ats", "/onboarding", "/subscription"]) {
     assert.ok(!headerCopy.includes(`"${href}"`), `header links to app page ${href}`);
   }
-  assert.ok(!headerCopy.includes("Admin"), "header mentions Admin");
+  // Since 2026-11-05 the header links /admin, but only through
+  // ADMIN_NAV_LINK, added only when /api/me reports the admin role.
+  assert.ok(headerCopy.includes('const ADMIN_NAV_LINK = { label: "Admin", href: "/admin" }'), "admin link is not defined once");
+  assert.ok(headerCopy.includes("...(isAdmin ? [ADMIN_NAV_LINK] : [])"), "admin link is not gated on the admin role");
+  assert.ok(headerCopy.includes('data.account.role === "admin"'), "admin link does not read the role from /api/me");
   const publicNav = headerCopy.split("const PUBLIC_NAV_LINKS = [")[1].split("];")[0];
   for (const href of ["/", "/#how-it-works", "/#templates", "/#free"]) {
     assert.ok(publicNav.includes(`"${href}"`), `public nav is missing ${href}`);
@@ -314,10 +318,11 @@ check("every app page is wrapped in the sign-in gate", () => {
   assert.deepStrictEqual(bad, [], `ungated app page: ${bad.join(", ")}`);
 });
 
-check("admin stays an unlinked route, never linked from any page", () => {
+check("admin is linked only from the role-gated header, never from any page", () => {
   const bad = [];
   for (const file of listTsxFiles(appDir)) {
-    if (file.endsWith("app/admin/page.tsx")) {
+    const unixPath = file.split(path.sep).join("/");
+    if (unixPath.endsWith("app/admin/page.tsx") || unixPath.endsWith("app/components/EditionHeader.tsx")) {
       continue;
     }
     const text = readFileSync(file, "utf8");

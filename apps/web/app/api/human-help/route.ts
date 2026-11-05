@@ -17,7 +17,9 @@ import { getDatabaseStatus, getPrismaClient } from "../../../lib/prisma";
 import {
   createHumanHelpRequest,
   getAdminFromToken,
+  HELP_REQUEST_STATUSES,
   listHumanHelpRequests,
+  updateHumanHelpStatus,
   validateHumanHelpRequest
 } from "../../../lib/database-core.mjs";
 import { checkRateLimit, clientAddress, tooManyRequestsResponse } from "../../../lib/rate-limit-core.mjs";
@@ -82,6 +84,41 @@ export async function GET(request: Request) {
     return Response.json({ status: "database", requests }, { status: 200 });
   } catch {
     return Response.json({ error: "The human help requests could not be read." }, { status: 500 });
+  }
+}
+
+// Admins mark a request new, contacted, or done from /admin.
+export async function PATCH(request: Request) {
+  const { client, status } = await getClient();
+  if (!client) {
+    return localOnlyResponse(status);
+  }
+  let admin: any = null;
+  try {
+    admin = await getAdminFromToken(client, bearerToken(request));
+  } catch {
+    admin = null;
+  }
+  if (!admin) {
+    return Response.json({ error: "Sign in with an admin account to change a request." }, { status: 401 });
+  }
+  let body: any = {};
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "Request body must be JSON." }, { status: 400 });
+  }
+  if (!HELP_REQUEST_STATUSES.includes(String(body?.status))) {
+    return Response.json({ error: "Status must be new, contacted, or done." }, { status: 400 });
+  }
+  try {
+    const updated = await updateHumanHelpStatus(client, String(body?.id || ""), String(body.status));
+    return Response.json({ status: "database", request: updated }, { status: 200 });
+  } catch {
+    return Response.json(
+      { error: "The status could not be saved. If this keeps happening, run the Neon migrate deploy workflow." },
+      { status: 500 }
+    );
   }
 }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { editionConfig } from "../../lib/config";
-import { readSignedInSession } from "../../lib/session-client.mjs";
+import { readServerSession, readSignedInSession, serverHeaders } from "../../lib/session-client.mjs";
 
 // Branded header, Phase 2 increment 16. Navy header with a gold
 // wordmark rule, white navigation, and one gold primary action, the
@@ -13,8 +13,10 @@ import { readSignedInSession } from "../../lib/session-client.mjs";
 // The public nav shows public things only: Home, How it works,
 // Templates, the free offer, and Get human help. App pages are for
 // signed-in users only, so Dashboard and Account appear only when a
-// session is stored in this browser, server or local. Admin is never
-// linked here, it stays an unlinked route only.
+// session is stored in this browser, server or local. The Admin link
+// appears only when /api/me says the signed in account has the admin
+// role, since 2026-11-05. That is a display hint only: /admin and its
+// data routes check the role again on the server.
 
 const PUBLIC_NAV_LINKS = [
   { label: "Home", href: "/" },
@@ -23,18 +25,29 @@ const PUBLIC_NAV_LINKS = [
   { label: "Free offer", href: "/#free" }
 ];
 
+const ADMIN_NAV_LINK = { label: "Admin", href: "/admin" };
+
 export default function EditionHeader() {
   const [signedIn, setSignedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
     setSignedIn(readSignedInSession(window.localStorage) !== null);
+    const session = readServerSession(window.localStorage);
+    if (!session) {
+      return;
+    }
+    fetch("/api/me", { headers: serverHeaders(session) })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => setIsAdmin(Boolean(data && data.account && data.account.role === "admin")))
+      .catch(() => setIsAdmin(false));
   }, []);
-  const navLinks = signedIn
-    ? [
-        ...PUBLIC_NAV_LINKS,
-        { label: "Dashboard", href: "/dashboard" },
-        { label: "Account", href: "/auth" }
-      ]
-    : [...PUBLIC_NAV_LINKS, { label: "Sign in", href: "/auth" }];
+  const signedInLinks = [
+    ...PUBLIC_NAV_LINKS,
+    { label: "Dashboard", href: "/dashboard" },
+    ...(isAdmin ? [ADMIN_NAV_LINK] : []),
+    { label: "Account", href: "/auth" }
+  ];
+  const navLinks = signedIn ? signedInLinks : [...PUBLIC_NAV_LINKS, { label: "Sign in", href: "/auth" }];
   return (
     <header className="site-header">
       <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-4 sm:px-6">

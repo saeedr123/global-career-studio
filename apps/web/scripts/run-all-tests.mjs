@@ -34,6 +34,7 @@ const suites = [
   { name: "rich footer", command: process.execPath, args: ["scripts/test-rich-footer.mjs"], cwd: webDir },
   { name: "human help", command: process.execPath, args: ["scripts/test-human-help.mjs"], cwd: webDir },
   { name: "security", command: process.execPath, args: ["scripts/test-security.mjs"], cwd: webDir },
+  { name: "admin area", command: process.execPath, args: ["scripts/test-admin-area.mjs"], cwd: webDir },
   { name: "end to end smoke", command: process.execPath, args: ["scripts/test-e2e-smoke.mjs"], cwd: webDir }
 ];
 

@@ -789,3 +789,50 @@ export async function logAdminAction(client, adminUser, action, targetType, targ
     }
   });
 }
+
+// Admin area, 2026-11-05. Every function below is for a caller that
+// has already passed getAdminFromToken in the route. Account rows
+// never include the password hash. Each part of the overview is read
+// on its own, so a table that is not migrated yet (for example
+// HumanHelpRequest) leaves that part null instead of failing the page.
+export const HELP_REQUEST_STATUSES = ["new", "contacted", "done"];
+
+async function countOrNull(fn) {
+  try {
+    return await fn();
+  } catch {
+    return null;
+  }
+}
+
+export async function getAdminOverview(client) {
+  requireClient(client);
+  const accounts = await countOrNull(() => client.user.count({ where: { deletedAt: null } }));
+  const documents = await countOrNull(() => client.document.count({ where: { deletedAt: null } }));
+  const helpOpen = await countOrNull(() => client.humanHelpRequest.count({ where: { status: { not: "done" } } }));
+  const helpTotal = await countOrNull(() => client.humanHelpRequest.count());
+  return { accounts, documents, helpOpen, helpTotal };
+}
+
+export async function listAccountsForAdmin(client, limit) {
+  requireClient(client);
+  const take = Math.min(Math.max(Number(limit) || 100, 1), 500);
+  const rows = await client.user.findMany({
+    where: { deletedAt: null },
+    orderBy: { createdAt: "desc" },
+    take,
+    select: { id: true, name: true, email: true, role: true, edition: true, createdAt: true }
+  });
+  return (rows || []).map((row) => publicUser(row));
+}
+
+export async function updateHumanHelpStatus(client, id, status) {
+  requireClient(client);
+  if (!id) {
+    throw new Error("A request id is required.");
+  }
+  if (!HELP_REQUEST_STATUSES.includes(String(status))) {
+    throw new Error("Status must be new, contacted, or done.");
+  }
+  return client.humanHelpRequest.update({ where: { id: String(id) }, data: { status: String(status) } });
+}
